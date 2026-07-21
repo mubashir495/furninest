@@ -1,0 +1,97 @@
+# ==========================
+# Dependencies
+# ==========================
+node_modules/
+
+# ==========================
+# Build Output
+# ==========================
+.next/
+dist/
+build/
+out/
+
+# ==========================
+# Logs
+# ==========================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==========================
+# Environment Variables
+# ==========================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# ==========================
+# Cache
+# ==========================
+.cache/
+.parcel-cache/
+.turbo/
+.eslintcache
+*.tsbuildinfo
+
+# ==========================
+# Coverage
+# ==========================
+coverage/
+.nyc_output/
+
+# ==========================
+# IDE & Editor
+# ==========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ==========================
+# OS Files
+# ==========================
+.DS_Store
+Thumbs.db
+
+# ==========================
+# Package Managers
+# ==========================
+.pnp.*
+.pnpm-store/
+.yarn/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# ==========================
+# Temporary Files
+# ==========================
+tmp/
+temp/
+*.tmp
+
+# ==========================
+# NestJS
+# ==========================
+dist/
+uploads/
+
+# ==========================
+# Vercel
+# ==========================
+.vercel/
+
+# ==========================
+# Misc
+# ==========================
+*.pid
+*.seed
+*.pid.lock
