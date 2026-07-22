@@ -12,6 +12,7 @@ import ProductDeleteModal from '@/components/admin/product/ProductDeleteModal';
 import { useProducts } from '@/hooks/useProducts';
 import { Product, ProductFormData } from '@/Type/products';
 
+
 export default function ProductsPage() {
   const {
     products,

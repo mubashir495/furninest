@@ -17,9 +17,33 @@ export function useProducts() {
     setError(null);
     try {
       const response = await productService.getProducts(page, 10, search);
-      setProducts(response.data || []);
-      setTotalPages(response.pagination?.totalPages || 1);
-      setTotal(response.pagination?.total || 0);
+
+      // Debug: check this in browser console to confirm actual shape
+      console.log('API response (getProducts):', response);
+
+      // Handles multiple possible response shapes safely:
+      // 1) response = [...]                              (already an array)
+      // 2) response = { success, data: [...] }            (single-wrapped)
+      // 3) response = { success, data: { success, data: [...] } } (double-wrapped)
+      let productsData: Product[] = [];
+      let paginationData: any = undefined;
+
+      if (Array.isArray(response)) {
+        productsData = response;
+      } else if (Array.isArray((response as any)?.data)) {
+        productsData = (response as any).data;
+        paginationData = (response as any).pagination;
+      } else if (Array.isArray((response as any)?.data?.data)) {
+        productsData = (response as any).data.data;
+        paginationData = (response as any).data.pagination ?? (response as any).pagination;
+      } else if (Array.isArray((response as any)?.products)) {
+        productsData = (response as any).products;
+        paginationData = (response as any).pagination;
+      }
+
+      setProducts(productsData);
+      setTotalPages(paginationData?.totalPages || 1);
+      setTotal(paginationData?.total || productsData.length);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products';
       setError(errorMessage);
@@ -57,15 +81,12 @@ export function useProducts() {
     (data.color || []).forEach((c) => formData.append('color', c));
     (data.size || []).forEach((s) => formData.append('size', s));
 
-    // Suggested products (kept separate from gallery images)
     (data.suggestionItems || []).forEach((id) => formData.append('suggestionItems', id));
 
-    // Gallery images (multiple)
     images.forEach((image) => {
       formData.append('images', image);
     });
 
-    // Thumbnail (single, separate field key)
     if (thumbnail) {
       formData.append('thumbnail', thumbnail);
     }
@@ -106,8 +127,6 @@ export function useProducts() {
     (data.color || []).forEach((c) => formData.append('color', c));
     (data.size || []).forEach((s) => formData.append('size', s));
 
-    // Suggested products (kept separate from gallery images).
-    // Always send the field (even empty) on update so clearing all suggestions is possible.
     if (data.suggestionItems && data.suggestionItems.length > 0) {
       data.suggestionItems.forEach((id) => formData.append('suggestionItems', id));
     } else {
@@ -183,7 +202,19 @@ export function useAllProducts(excludeId?: string) {
     setLoading(true);
     try {
       const response = await productService.getProducts(1, 1000, '');
-      setAllProducts(response.products || []);
+
+      let productsData: Product[] = [];
+      if (Array.isArray(response)) {
+        productsData = response;
+      } else if (Array.isArray((response as any)?.data)) {
+        productsData = (response as any).data;
+      } else if (Array.isArray((response as any)?.data?.data)) {
+        productsData = (response as any).data.data;
+      } else if (Array.isArray((response as any)?.products)) {
+        productsData = (response as any).products;
+      }
+
+      setAllProducts(productsData);
     } catch (err) {
       setAllProducts([]);
     } finally {
