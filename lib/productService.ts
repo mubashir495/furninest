@@ -78,7 +78,11 @@ class ProductService {
         discount: item.discount || 0,
         finalPrice: item.finalPrice || item.price || 0,
         stock: item.stock || 0,
+        thumbnailImage: item.thumbnailImage || '',
         images: item.images || [],
+        color: item.color || [],
+        size: item.size || [],
+        suggestionItems: item.suggestionItems || [],
         status: item.isActive ? 'active' : 'inactive',
         createdAt: item.created_date || item.createdAt || new Date().toISOString(),
         updatedAt: item.updated_date || item.updatedAt || new Date().toISOString(),
@@ -129,7 +133,7 @@ class ProductService {
 
   async updateProduct(id: string, data: FormData): Promise<Product> {
     try {
-      const response = await api.put(`/products/${id}`, data, {
+      const response = await api.patch(`/products/${id}`, data, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

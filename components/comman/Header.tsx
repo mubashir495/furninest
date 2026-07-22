@@ -12,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeMode } from '@/Type/theme';
 import { MonitorCog } from 'lucide-react';
+import { categoryService } from '@/services/categoryService';
+import { Category } from '@/Type/category';
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
@@ -22,6 +24,9 @@ export function Header() {
   const [isShopHovered, setIsShopHovered] = useState(false);
   const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [shopCategories, setShopCategories] = useState<Category[]>([]);
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
 
   const itemCount = useCartStore((state) => state.cart?.totalItems ?? 0);
   const wishlistItems = useWishlistStore((state) => state.items);
@@ -49,6 +54,24 @@ export function Header() {
     setIsMobileMenuOpen(false);
     setIsSearchOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    let mounted = true;
+    categoryService
+      .getCategories()
+      .then((data) => {
+        if (mounted) setShopCategories(data);
+      })
+      .catch(() => {
+        if (mounted) setShopCategories([]);
+      })
+      .finally(() => {
+        if (mounted) setCategoriesLoaded(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,27 +139,36 @@ export function Header() {
                   {link.name === 'Shop' && isShopHovered && (
                     <div className="absolute top-full left-1/2 -translate-x-1/2 pt-4">
                       <div className="glass dark:glass-dark card-shadow rounded-3xl p-4 grid grid-cols-2 gap-4 w-96">
-                        {[
-                          { name: 'Living Room', img: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=300&q=80' },
-                          { name: 'Bedroom', img: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=300&q=80' },
-                          { name: 'Dining Room', img: 'https://images.unsplash.com/photo-154948834-c4bbc6c34a5cc?w=300&q=80' },
-                          { name: 'Home Office', img: 'https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?w=300&q=80' },
-                        ].map((cat) => (
-                          <Link
-                            key={cat.name}
-                            href={`/shop?category=${cat.name.toLowerCase().replace(' ', '-')}`}
-                            className="group/cat block relative aspect-square rounded-2xl overflow-hidden"
-                          >
-                            <img
-                              src={cat.img}
-                              alt={cat.name}
-                              className="w-full h-full object-cover transition-transform duration-500 group-hover/cat:scale-110"
-                            />
-                            <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                              <span className="text-white font-serif font-medium">{cat.name}</span>
-                            </div>
-                          </Link>
-                        ))}
+                        {!categoriesLoaded ? (
+                          [...Array(4)].map((_, i) => (
+                            <div key={i} className="aspect-square rounded-2xl bg-muted animate-pulse" />
+                          ))
+                        ) : shopCategories.length === 0 ? (
+                          <p className="col-span-2 text-center text-sm text-muted-foreground py-4">
+                            No categories available yet.
+                          </p>
+                        ) : (
+                          shopCategories.slice(0, 4).map((cat) => (
+                            <Link
+                              key={cat._id}
+                              href={cat.slug ? `/category/${cat.slug}` : '/shop'}
+                              className="group/cat block relative aspect-square rounded-2xl overflow-hidden"
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={cat.image || '/window.svg'}
+                                alt={cat.name}
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover/cat:scale-110"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src = '/window.svg';
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                                <span className="text-white font-serif font-medium">{cat.name}</span>
+                              </div>
+                            </Link>
+                          ))
+                        )}
                       </div>
                     </div>
                   )}
@@ -333,4 +365,3 @@ export function Header() {
     </>
   );
 }
-

@@ -5,6 +5,7 @@ export interface Category {
   name: string;
   slug: string;
   image?: string;
+  description?: string;
   created_date?: string;
 }
 
@@ -17,12 +18,15 @@ export const getCategories = async () => {
   }
 };
 
-export const createCategory = async (name: string, image?: File) => {
+export const createCategory = async (name: string, image?: File, description?: string) => {
   try {
     const formData = new FormData();
     formData.append('name', name);
     if (image) {
       formData.append('image', image);
+    }
+    if (description !== undefined) {
+      formData.append('description', description);
     }
     const res = await api.post('/categories', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -33,12 +37,15 @@ export const createCategory = async (name: string, image?: File) => {
   }
 };
 
-export const updateCategory = async (id: string, name: string, image?: File) => {
+export const updateCategory = async (id: string, name: string, image?: File, description?: string) => {
   try {
     const formData = new FormData();
     formData.append('name', name);
     if (image) {
       formData.append('image', image);
+    }
+    if (description !== undefined) {
+      formData.append('description', description);
     }
     const res = await api.patch(`/categories/${id}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

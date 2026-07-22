@@ -11,6 +11,7 @@ import {
 export default function CategoriesPage() {
   const [categories, setCategories] = useState([]);
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [editingId, setEditingId] = useState("");
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
@@ -64,9 +65,9 @@ export default function CategoriesPage() {
       setLoading(true);
 
       if (editingId) {
-        await updateCategory(editingId, name, imageFile || undefined);
+        await updateCategory(editingId, name, imageFile || undefined, description);
       } else {
-        await createCategory(name, imageFile || undefined);
+        await createCategory(name, imageFile || undefined, description);
       }
 
       resetForm();
@@ -81,6 +82,7 @@ export default function CategoriesPage() {
 
   const resetForm = () => {
     setName("");
+    setDescription("");
     setEditingId("");
     setImageFile(null);
     setImagePreview("");
@@ -90,6 +92,7 @@ export default function CategoriesPage() {
 
   const handleEdit = (cat: any) => {
     setName(cat.name);
+    setDescription(cat.description || "");
     setEditingId(cat._id);
     setExistingImage(cat.image || "");
     setImagePreview("");
@@ -180,6 +183,16 @@ export default function CategoriesPage() {
               />
             </div>
 
+            <div className="flex-1">
+              <input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Category Description (optional)"
+                className="w-full pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
+              />
+            </div>
+
             {/* Image Upload */}
             <div className="flex items-center gap-3">
               <input
@@ -192,14 +205,10 @@ export default function CategoriesPage() {
               />
               <label
                 htmlFor="category-image-input"
-                className="cursor-pointer flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 whitespace-nowrap"
+                className="cursor-pointer px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 flex items-center gap-2 whitespace-nowrap"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
                 {displayImage ? "Change Image" : "Upload Image"}
               </label>
-
               {displayImage && (
                 <div className="relative">
                   <img
@@ -210,7 +219,6 @@ export default function CategoriesPage() {
                   <button
                     onClick={handleRemoveImage}
                     className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                    type="button"
                   >
                     ×
                   </button>

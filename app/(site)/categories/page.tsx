@@ -47,30 +47,32 @@ export default function CategoriesPage() {
         ) : (
           <div className="space-y-16">
             {catalog.map((category, idx) => {
-             const image =
-  category.image ||
-  category.subCategories.flatMap((sc) => sc.products).find((p) => p.thumbnailImage)?.thumbnailImage ||
-  '/window.svg';
+              // Prefer the category's own image; fall back to a product thumbnail,
+              // then a static placeholder so the card never breaks.
+              const image =
+                category.image ||
+                category.subCategories.flatMap((sc) => sc.products).find((p) => p.thumbnailImage)?.thumbnailImage ||
+                '/window.svg';
+              const href = category.slug ? `/category/${category.slug}` : '/shop';
               return (
                 <motion.div key={category._id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.05 }}>
-                  <Link href={`/category/${category.slug}`} className="group flex flex-col md:flex-row gap-6 items-center bg-card rounded-3xl soft-shadow overflow-hidden">
+                  <Link href={href} className="group flex flex-col md:flex-row gap-6 items-center bg-card rounded-3xl soft-shadow overflow-hidden">
                     <div className="w-full md:w-64 h-48 md:h-40 shrink-0 overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={image} alt={category.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                      <img
+                        src={image}
+                        alt={category.name}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = '/window.svg';
+                        }}
+                      />
                     </div>
                     <div className="flex-1 p-6">
                       <h2 className="text-2xl font-serif text-primary mb-2 group-hover:text-accent transition-colors">{category.name}</h2>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        {category.subCategories.reduce((sum, sc) => sum + sc.products.length, 0)} products across{' '}
-                        {category.subCategories.length} subcategories
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {category.subCategories.slice(0, 6).map((sub) => (
-                          <span key={sub._id} className="text-xs font-medium bg-muted px-3 py-1 rounded-full text-muted-foreground">
-                            {sub.name}
-                          </span>
-                        ))}
-                      </div>
+                      {category.description && (
+                        <p className="text-sm text-muted-foreground">{category.description}</p>
+                      )}
                     </div>
                   </Link>
                 </motion.div>

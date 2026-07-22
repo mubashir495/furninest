@@ -1,3 +1,18 @@
+export interface Category {
+  _id: string;
+  name: string;
+  slug?: string;
+  image?: string;
+  description?: string;
+}
+
+export interface SubCategory {
+  _id: string;
+  name: string;
+  slug?: string;
+  category: string | Category;
+}
+
 export interface Product {
   _id: string;
 
@@ -21,6 +36,9 @@ export interface Product {
   color?: string[];
   size?: string[];
 
+  // IDs of other products to show as "You may also like" suggestions
+  suggestionItems?: string[];
+
   sku?: string;
   brand?: string;
   material?: string;
@@ -32,6 +50,20 @@ export interface Product {
 
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface PaginatedResponse<T> {
+  products: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface ApiResponse<T> {
+  success?: boolean;
+  message?: string;
+  data: T;
 }
 
 export interface ProductFormData {
@@ -53,6 +85,9 @@ export interface ProductFormData {
 
   color?: string[];
   size?: string[];
+
+  // IDs of other products selected as suggestions (kept separate from gallery images)
+  suggestionItems?: string[];
 
   sku?: string;
   brand?: string;

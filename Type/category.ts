@@ -1,9 +1,9 @@
-
 export interface Category {
   _id: string;
   name: string;
   slug: string;
-  image?: string;          
+  image?: string;
+  description?: string;
   created_date: string;
   updated_date: string;
 }

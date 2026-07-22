@@ -1,19 +1,29 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X, Save, Loader2 } from 'lucide-react';
+import { X, Save, Loader2, ImagePlus } from 'lucide-react';
 import { colors } from '@/config/colors';
 import { Product, ProductFormData, Category, SubCategory } from '@/Type/products';
 import ProductImageUpload from './ProductImageUpload';
-import { useCategories, useSubCategories } from '@/hooks/useProducts';
+import { useCategories, useSubCategories, useAllProducts } from '@/hooks/useProducts';
 
 interface ProductModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: ProductFormData, images: File[]) => Promise<void>;
+  onSubmit: (data: ProductFormData, images: File[], thumbnail: File | null) => Promise<void>;
   initialData?: Product | null;
   loading?: boolean;
 }
+
+// Pulls a plain string id out of a value that may be a populated object or already an id
+const toId = (value: unknown): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value !== null && '_id' in (value as any)) {
+    return String((value as any)._id);
+  }
+  return String(value);
+};
 
 const modalStyles = {
   overlay: {
@@ -116,6 +126,61 @@ const modalStyles = {
     opacity: 0.6,
     cursor: 'not-allowed',
   },
+  thumbnailWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+  },
+  thumbnailPreview: {
+    width: '110px',
+    height: '110px',
+    borderRadius: colors.radius.md,
+    objectFit: 'cover' as const,
+    border: `1px solid ${colors.border}`,
+    background: colors.surface,
+  },
+  thumbnailDropzone: {
+    width: '110px',
+    height: '110px',
+    borderRadius: colors.radius.md,
+    border: `2px dashed ${colors.border}`,
+    background: colors.surface,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    color: colors.text.muted,
+    gap: '4px',
+    textAlign: 'center' as const,
+    fontSize: '11px',
+    padding: '8px',
+  },
+  suggestionsBox: {
+    border: `1px solid ${colors.border}`,
+    borderRadius: colors.radius.md,
+    maxHeight: '220px',
+    overflowY: 'auto' as const,
+    padding: '8px',
+    background: colors.surface,
+  },
+  suggestionRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    padding: '6px 8px',
+    borderRadius: colors.radius.sm,
+    cursor: 'pointer',
+  },
+  suggestionThumb: {
+    width: '32px',
+    height: '32px',
+    borderRadius: colors.radius.sm,
+    objectFit: 'cover' as const,
+    border: `1px solid ${colors.border}`,
+    background: '#fff',
+    flexShrink: 0,
+  },
 };
 
 export default function ProductModal({
@@ -136,11 +201,18 @@ export default function ProductModal({
     images: [],
     color: [],
     size: [],
+    suggestionItems: [],
   });
 
   const [selectedCategory, setSelectedCategory] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
+
+  // Thumbnail (single, required, kept separate from the gallery images)
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState<string>('');
+  const [existingThumbnail, setExistingThumbnail] = useState<string>('');
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -149,6 +221,7 @@ export default function ProductModal({
 
   const { categories, loading: categoriesLoading } = useCategories();
   const { subCategories, loading: subCategoriesLoading } = useSubCategories(selectedCategory);
+  const { products: suggestionCandidates, loading: suggestionsLoading } = useAllProducts(initialData?._id);
 
   useEffect(() => {
     if (initialData) {
@@ -173,9 +246,15 @@ export default function ProductModal({
         images: initialData.images || [],
         color: initialData.color || [],
         size: initialData.size || [],
+        suggestionItems: (initialData.suggestionItems || []).map(toId),
       });
 
       setExistingImages(initialData.images || []);
+
+      // Thumbnail (existing URL, edit mode)
+      setThumbnailFile(null);
+      setThumbnailPreview('');
+      setExistingThumbnail(initialData.thumbnailImage || '');
     } else {
       setSelectedCategory('');
       setImageFiles([]);
@@ -183,6 +262,9 @@ export default function ProductModal({
       setErrors({});
       setColorInput('');
       setSizeInput('');
+      setThumbnailFile(null);
+      setThumbnailPreview('');
+      setExistingThumbnail('');
       setFormData({
         name: '',
         shortDescription: '',
@@ -194,6 +276,7 @@ export default function ProductModal({
         images: [],
         color: [],
         size: [],
+        suggestionItems: [],
       });
     }
   }, [initialData]);
@@ -243,6 +326,10 @@ export default function ProductModal({
       newErrors.images = 'At least one product image is required';
     }
 
+    if (!thumbnailFile && !existingThumbnail) {
+      newErrors.thumbnail = 'Thumbnail image is required';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -253,7 +340,7 @@ export default function ProductModal({
 
     try {
       setSubmitting(true);
-      await onSubmit(formData, imageFiles);
+      await onSubmit(formData, imageFiles, thumbnailFile);
       onClose();
     } catch (error) {
       console.error(error);
@@ -286,6 +373,32 @@ export default function ProductModal({
 
   const handleRemoveExistingImage = (index: number) => {
     setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleThumbnailSelect = (file: File | null) => {
+    if (!file) return;
+    setThumbnailFile(file);
+    setThumbnailPreview(URL.createObjectURL(file));
+    setExistingThumbnail('');
+    if (errors.thumbnail) {
+      setErrors((prev) => ({ ...prev, thumbnail: '' }));
+    }
+  };
+
+  const handleRemoveThumbnail = () => {
+    setThumbnailFile(null);
+    setThumbnailPreview('');
+    setExistingThumbnail('');
+  };
+
+  const handleToggleSuggestion = (productId: string) => {
+    setFormData((prev) => {
+      const current = prev.suggestionItems || [];
+      const next = current.includes(productId)
+        ? current.filter((id) => id !== productId)
+        : [...current, productId];
+      return { ...prev, suggestionItems: next };
+    });
   };
 
   const handleAddColor = () => {
@@ -580,6 +693,60 @@ export default function ProductModal({
               </div>
             </div>
 
+            {/* Thumbnail Image */}
+            <div style={modalStyles.formGroup}>
+              <label style={modalStyles.label}>Thumbnail Image *</label>
+              <div style={modalStyles.thumbnailWrap}>
+                {thumbnailPreview || existingThumbnail ? (
+                  <div style={{ position: 'relative' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={thumbnailPreview || existingThumbnail}
+                      alt="Thumbnail preview"
+                      style={modalStyles.thumbnailPreview}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleRemoveThumbnail}
+                      style={{
+                        position: 'absolute',
+                        top: '-8px',
+                        right: '-8px',
+                        background: colors.error[500],
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '999px',
+                        width: '22px',
+                        height: '22px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                ) : (
+                  <label style={modalStyles.thumbnailDropzone}>
+                    <ImagePlus size={22} />
+                    <span>Upload thumbnail</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => handleThumbnailSelect(e.target.files?.[0] || null)}
+                    />
+                  </label>
+                )}
+                <p style={{ fontSize: '13px', color: colors.text.muted, margin: 0 }}>
+                  A single image used as the main product card / listing image.
+                  This is separate from the product gallery images below.
+                </p>
+              </div>
+              {errors.thumbnail && <p style={modalStyles.error}>{errors.thumbnail}</p>}
+            </div>
+
             {/* Product Images */}
             <div style={modalStyles.formGroup}>
               <label style={modalStyles.label}>Product Images *</label>
@@ -590,6 +757,52 @@ export default function ProductModal({
                 maxImages={10}
               />
               {errors.images && <p style={modalStyles.error}>{errors.images}</p>}
+            </div>
+
+            {/* Suggested Products */}
+            <div style={modalStyles.formGroup}>
+              <label style={modalStyles.label}>Suggested Products</label>
+              <p style={{ fontSize: '13px', color: colors.text.muted, marginTop: '-4px', marginBottom: '8px' }}>
+                Pick existing products to recommend alongside this one. Optional — if left empty,
+                other products from the same sub category are suggested automatically.
+              </p>
+              <div style={modalStyles.suggestionsBox}>
+                {suggestionsLoading ? (
+                  <p style={{ fontSize: '13px', color: colors.text.muted, padding: '8px' }}>
+                    Loading products...
+                  </p>
+                ) : suggestionCandidates.length === 0 ? (
+                  <p style={{ fontSize: '13px', color: colors.text.muted, padding: '8px' }}>
+                    No other products available yet.
+                  </p>
+                ) : (
+                  suggestionCandidates.map((p) => {
+                    const checked = (formData.suggestionItems || []).includes(p._id);
+                    return (
+                      <label
+                        key={p._id}
+                        style={{
+                          ...modalStyles.suggestionRow,
+                          background: checked ? colors.primary[50] : 'transparent',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => handleToggleSuggestion(p._id)}
+                        />
+                        {p.thumbnailImage || p.images?.[0] ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.thumbnailImage || p.images[0]} alt={p.name} style={modalStyles.suggestionThumb} />
+                        ) : (
+                          <div style={modalStyles.suggestionThumb} />
+                        )}
+                        <span style={{ fontSize: '13px' }}>{p.name}</span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
             </div>
 
             {/* Footer */}

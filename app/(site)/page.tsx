@@ -231,10 +231,13 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {catalog.slice(0, 4).map((category, index) => {
-              const productCount = category.subCategories.reduce((sum, sc) => sum + sc.products.length, 0);
+              // Use the category's own image from the API first. Only fall back to a
+              // product thumbnail (and finally a placeholder) if no image was set.
               const image =
+                category.image ||
                 category.subCategories.flatMap((sc) => sc.products).find((p) => p.thumbnailImage)?.thumbnailImage ||
                 '/window.svg';
+              const href = category.slug ? `/category/${category.slug}` : '/shop';
               return (
                 <motion.div
                   key={category._id}
@@ -243,13 +246,22 @@ export default function Home() {
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                   viewport={{ once: true }}
                 >
-                  <Link href={`/category/${category.slug}`} className="group block relative overflow-hidden aspect-square rounded-3xl">
+                  <Link href={href} className="group block relative overflow-hidden aspect-square rounded-3xl">
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10 transition-opacity duration-300 group-hover:opacity-90" />
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={image} alt={category.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                    <img
+                      src={image}
+                      alt={category.name}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/window.svg';
+                      }}
+                    />
                     <div className="absolute bottom-6 left-6 z-20">
                       <h3 className="text-white font-serif text-2xl mb-1 group-hover:text-accent transition-colors">{category.name}</h3>
-                      <p className="text-white/70 text-sm font-medium">{productCount} Products</p>
+                      {category.description && (
+                        <p className="text-white/70 text-sm font-medium line-clamp-1">{category.description}</p>
+                      )}
                     </div>
                   </Link>
                 </motion.div>

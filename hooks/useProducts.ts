@@ -57,6 +57,9 @@ export function useProducts() {
     (data.color || []).forEach((c) => formData.append('color', c));
     (data.size || []).forEach((s) => formData.append('size', s));
 
+    // Suggested products (kept separate from gallery images)
+    (data.suggestionItems || []).forEach((id) => formData.append('suggestionItems', id));
+
     // Gallery images (multiple)
     images.forEach((image) => {
       formData.append('images', image);
@@ -102,6 +105,14 @@ export function useProducts() {
 
     (data.color || []).forEach((c) => formData.append('color', c));
     (data.size || []).forEach((s) => formData.append('size', s));
+
+    // Suggested products (kept separate from gallery images).
+    // Always send the field (even empty) on update so clearing all suggestions is possible.
+    if (data.suggestionItems && data.suggestionItems.length > 0) {
+      data.suggestionItems.forEach((id) => formData.append('suggestionItems', id));
+    } else {
+      formData.append('suggestionItems', '');
+    }
 
     images.forEach((image) => {
       formData.append('images', image);
@@ -160,6 +171,35 @@ export function useProducts() {
     updateProduct,
     deleteProduct,
   };
+}
+
+// Loads the full product catalog (not paginated) so it can be used in
+// selection UIs such as the "Suggested Products" picker in the product form.
+export function useAllProducts(excludeId?: string) {
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchAllProducts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await productService.getProducts(1, 1000, '');
+      setAllProducts(response.products || []);
+    } catch (err) {
+      setAllProducts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAllProducts();
+  }, [fetchAllProducts]);
+
+  const selectableProducts = excludeId
+    ? allProducts.filter((p) => p._id !== excludeId)
+    : allProducts;
+
+  return { products: selectableProducts, loading, fetchAllProducts };
 }
 
 export function useCategories() {
