@@ -1,5 +1,3 @@
-// src/components/admin/products/ProductTable.tsx
-
 'use client';
 
 import React, { useState } from 'react';
@@ -42,8 +40,8 @@ export default function ProductTable({
     onSearchChange(searchInput);
   };
 
-  const getStatusColor = (status: string) => {
-    return status === 'active'
+  const getStatusColor = (isActive: boolean) => {
+    return isActive
       ? { bg: colors.success[50], text: colors.success[700] }
       : { bg: colors.error[50], text: colors.error[700] };
   };
@@ -266,7 +264,9 @@ export default function ProductTable({
               <th style={headerCellStyle}>Image</th>
               <th style={headerCellStyle}>Name</th>
               <th style={headerCellStyle}>Category</th>
+              <th style={headerCellStyle}>Sub Category</th>
               <th style={headerCellStyle}>Price</th>
+              <th style={headerCellStyle}>Discount</th>
               <th style={headerCellStyle}>Final Price</th>
               <th style={headerCellStyle}>Stock</th>
               <th style={headerCellStyle}>Colors</th>
@@ -279,13 +279,13 @@ export default function ProductTable({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={11} style={loadingOverlayStyle}>
+                <td colSpan={13} style={loadingOverlayStyle}>
                   <div>Loading products...</div>
                 </td>
               </tr>
             ) : productsArray.length === 0 ? (
               <tr>
-                <td colSpan={11} style={emptyStateStyle}>
+                <td colSpan={13} style={emptyStateStyle}>
                   <div>
                     <p style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '0.5rem' }}>
                       No products found
@@ -297,13 +297,19 @@ export default function ProductTable({
                 </td>
               </tr>
             ) : (
-              productsArray.map((product, index) => {
-                const statusColors = getStatusColor(product.status || 'inactive');
+              productsArray.map((product: any, index) => {
+                // Fixed: isActive (boolean) instead of status (string)
+                const statusColors = getStatusColor(!!product.isActive);
                 const rowBgColor = index % 2 === 0 ? colors.background : colors.surface;
+
+                // Prefer thumbnailImage, fall back to first image
+                const thumbnail =
+                  product.thumbnailImage ||
+                  (product.images && product.images.length > 0 ? product.images[0] : '');
 
                 return (
                   <tr
-                    key={product._id || index}
+                    key={product._id || product.id || index}
                     style={{
                       ...rowStyle,
                       backgroundColor: rowBgColor,
@@ -316,9 +322,9 @@ export default function ProductTable({
                     }}
                   >
                     <td style={cellStyle}>
-                      {product.images && product.images.length > 0 ? (
+                      {thumbnail ? (
                         <img
-                          src={product.images[0]}
+                          src={thumbnail}
                           alt={product.name || 'Product'}
                           style={thumbnailStyle}
                           onError={(e) => {
@@ -343,9 +349,13 @@ export default function ProductTable({
                     </td>
                     <td style={{ ...cellStyle, fontWeight: 500 }}>{product.name || 'Unnamed'}</td>
                     <td style={cellStyle}>{getCategoryName(product.category)}</td>
+                    <td style={cellStyle}>{getSubCategoryName(product.subCategory)}</td>
                     <td style={cellStyle}>{formatCurrency(product.price || 0)}</td>
+                    <td style={cellStyle}>
+                      {product.discount ? `${product.discount}%` : '—'}
+                    </td>
                     <td style={{ ...cellStyle, fontWeight: 600, color: colors.primary[600] }}>
-                      {formatCurrency(product.finalPrice || product.price || 0)}
+                      {formatCurrency(product.finalPrice ?? product.price ?? 0)}
                     </td>
                     <td style={cellStyle}>
                       <span style={{
@@ -358,7 +368,7 @@ export default function ProductTable({
                     <td style={{ ...cellStyle, maxWidth: '160px' }}>
                       {product.color && product.color.length > 0 ? (
                         <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                          {product.color.map((c, i) => (
+                          {product.color.map((c: string, i: number) => (
                             <span key={i} style={tagBadgeStyle}>{c}</span>
                           ))}
                         </div>
@@ -369,7 +379,7 @@ export default function ProductTable({
                     <td style={{ ...cellStyle, maxWidth: '160px' }}>
                       {product.size && product.size.length > 0 ? (
                         <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                          {product.size.map((s, i) => (
+                          {product.size.map((s: string, i: number) => (
                             <span key={i} style={tagBadgeStyle}>{s}</span>
                           ))}
                         </div>
@@ -383,10 +393,12 @@ export default function ProductTable({
                         backgroundColor: statusColors.bg,
                         color: statusColors.text,
                       }}>
-                        {product.status ? product.status.charAt(0).toUpperCase() + product.status.slice(1) : 'Inactive'}
+                        {product.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td style={cellStyle}>{product.createdAt ? formatDate(product.createdAt) : 'N/A'}</td>
+                    <td style={cellStyle}>
+                      {product.created_date ? formatDate(product.created_date) : 'N/A'}
+                    </td>
                     <td style={cellStyle}>
                       <div style={actionsStyle}>
                         <button
