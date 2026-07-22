@@ -1,26 +1,59 @@
-import api from "./axios";
+import api, { getApiErrorMessage } from './axios';
+
+export interface Category {
+  _id: string;
+  name: string;
+  slug: string;
+  image?: string;
+  created_date?: string;
+}
 
 export const getCategories = async () => {
-  const res = await api.get("/categories");
-  return res.data;
+  try {
+    const res = await api.get('/categories');
+    return res.data;
+  } catch (err) {
+    throw new Error(getApiErrorMessage(err, 'Failed to load categories'));
+  }
 };
 
-export const createCategory = async (name: string) => {
-  const res = await api.post("/categories", {
-    name,
-  });
-  return res.data;
+export const createCategory = async (name: string, image?: File) => {
+  try {
+    const formData = new FormData();
+    formData.append('name', name);
+    if (image) {
+      formData.append('image', image);
+    }
+    const res = await api.post('/categories', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  } catch (err) {
+    throw new Error(getApiErrorMessage(err, 'Failed to create category'));
+  }
 };
 
-export const updateCategory = async (id: string, name: string) => {
-  const res = await api.patch(`/categories/${id}`, {
-    name,
-  });
-
-  return res.data;
+export const updateCategory = async (id: string, name: string, image?: File) => {
+  try {
+    const formData = new FormData();
+    formData.append('name', name);
+    if (image) {
+      formData.append('image', image);
+    }
+    const res = await api.patch(`/categories/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  } catch (err) {
+    throw new Error(getApiErrorMessage(err, 'Failed to update category'));
+  }
 };
 
 export const deleteCategory = async (id: string) => {
-  const res = await api.delete(`/categories/${id}`);
-  return res.data;
+  try {
+    const res = await api.delete(`/categories/${id}`);
+    return res.data;
+  } catch (err) {
+    throw new Error(getApiErrorMessage(err, 'Failed to delete category'));
+  }
 };

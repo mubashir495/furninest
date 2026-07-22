@@ -24,7 +24,7 @@ export function useProducts() {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products';
       setError(errorMessage);
       setProducts([]);
-      
+
       if (errorMessage.includes('Session expired') || errorMessage.includes('login again')) {
         toast.error('Session expired. Please login again.');
       } else {
@@ -41,8 +41,7 @@ export function useProducts() {
 
   const createProduct = async (data: ProductFormData, images: File[]) => {
     const formData = new FormData();
-    
-    // Append all text fields (NO status)
+
     formData.append('name', data.name);
     formData.append('shortDescription', data.shortDescription);
     formData.append('longDescription', data.longDescription);
@@ -50,8 +49,13 @@ export function useProducts() {
     formData.append('price', data.price.toString());
     formData.append('discount', data.discount.toString());
     formData.append('stock', data.stock.toString());
-    
-    // Append images
+
+    // Append color array (one key per value; multer/backend parses repeated keys as array)
+    (data.color || []).forEach((c) => formData.append('color', c));
+
+    // Append size array
+    (data.size || []).forEach((s) => formData.append('size', s));
+
     images.forEach((image) => {
       formData.append('images', image);
     });
@@ -63,7 +67,7 @@ export function useProducts() {
       return product;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create product';
-      
+
       if (errorMessage.includes('Session expired') || errorMessage.includes('login again')) {
         toast.error('Session expired. Please login again.');
       } else {
@@ -75,8 +79,7 @@ export function useProducts() {
 
   const updateProduct = async (id: string, data: ProductFormData, images: File[]) => {
     const formData = new FormData();
-    
-    // Append all text fields (NO status)
+
     formData.append('name', data.name);
     formData.append('shortDescription', data.shortDescription);
     formData.append('longDescription', data.longDescription);
@@ -84,8 +87,10 @@ export function useProducts() {
     formData.append('price', data.price.toString());
     formData.append('discount', data.discount.toString());
     formData.append('stock', data.stock.toString());
-    
-    // Append images
+
+    (data.color || []).forEach((c) => formData.append('color', c));
+    (data.size || []).forEach((s) => formData.append('size', s));
+
     images.forEach((image) => {
       formData.append('images', image);
     });
@@ -97,7 +102,7 @@ export function useProducts() {
       return product;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update product';
-      
+
       if (errorMessage.includes('Session expired') || errorMessage.includes('login again')) {
         toast.error('Session expired. Please login again.');
       } else {
@@ -114,7 +119,7 @@ export function useProducts() {
       await fetchProducts();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete product';
-      
+
       if (errorMessage.includes('Session expired') || errorMessage.includes('login again')) {
         toast.error('Session expired. Please login again.');
       } else {
@@ -152,7 +157,7 @@ export function useCategories() {
       setCategories(data || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load categories';
-      
+
       if (errorMessage.includes('Session expired') || errorMessage.includes('login again')) {
         toast.error('Session expired. Please login again.');
       } else {
@@ -183,7 +188,7 @@ export function useSubCategories(categoryId?: string) {
       setAllSubCategories(data || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load subcategories';
-      
+
       if (errorMessage.includes('Session expired') || errorMessage.includes('login again')) {
         toast.error('Session expired. Please login again.');
       } else {
@@ -202,8 +207,8 @@ export function useSubCategories(categoryId?: string) {
   useEffect(() => {
     if (categoryId && allSubCategories.length > 0) {
       const filtered = allSubCategories.filter(
-        sub => typeof sub.category === 'string' 
-          ? sub.category === categoryId 
+        sub => typeof sub.category === 'string'
+          ? sub.category === categoryId
           : (sub.category as Category)._id === categoryId
       );
       setSubCategories(filtered);

@@ -134,6 +134,8 @@ export default function ProductModal({
     discount: 0,
     stock: 0,
     images: [],
+    color: [],
+    size: [],
   });
 
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -141,6 +143,9 @@ export default function ProductModal({
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const [colorInput, setColorInput] = useState('');
+  const [sizeInput, setSizeInput] = useState('');
 
   const { categories, loading: categoriesLoading } = useCategories();
   const { subCategories, loading: subCategoriesLoading } = useSubCategories(selectedCategory);
@@ -166,6 +171,8 @@ export default function ProductModal({
         discount: initialData.discount || 0,
         stock: initialData.stock,
         images: initialData.images || [],
+        color: initialData.color || [],
+        size: initialData.size || [],
       });
 
       setExistingImages(initialData.images || []);
@@ -174,6 +181,8 @@ export default function ProductModal({
       setImageFiles([]);
       setExistingImages([]);
       setErrors({});
+      setColorInput('');
+      setSizeInput('');
       setFormData({
         name: '',
         shortDescription: '',
@@ -183,6 +192,8 @@ export default function ProductModal({
         discount: 0,
         stock: 0,
         images: [],
+        color: [],
+        size: [],
       });
     }
   }, [initialData]);
@@ -275,6 +286,42 @@ export default function ProductModal({
 
   const handleRemoveExistingImage = (index: number) => {
     setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddColor = () => {
+    const trimmed = colorInput.trim();
+    if (trimmed && !(formData.color || []).includes(trimmed)) {
+      setFormData((prev) => ({
+        ...prev,
+        color: [...(prev.color || []), trimmed],
+      }));
+      setColorInput('');
+    }
+  };
+
+  const handleRemoveColor = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      color: (prev.color || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddSize = () => {
+    const trimmed = sizeInput.trim();
+    if (trimmed && !(formData.size || []).includes(trimmed)) {
+      setFormData((prev) => ({
+        ...prev,
+        size: [...(prev.size || []), trimmed],
+      }));
+      setSizeInput('');
+    }
+  };
+
+  const handleRemoveSize = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      size: (prev.size || []).filter((_, i) => i !== index),
+    }));
   };
 
   const isSubmitting = submitting || loading;
@@ -418,6 +465,119 @@ export default function ProductModal({
                 style={modalStyles.input}
               />
               {errors.stock && <p style={modalStyles.error}>{errors.stock}</p>}
+            </div>
+
+            {/* Colors & Sizes */}
+            <div style={modalStyles.row}>
+              {/* Colors */}
+              <div style={modalStyles.formGroup}>
+                <label style={modalStyles.label}>Colors</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    value={colorInput}
+                    onChange={(e) => setColorInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddColor();
+                      }
+                    }}
+                    placeholder="e.g. Red"
+                    style={modalStyles.input}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddColor}
+                    style={{
+                      ...modalStyles.button,
+                      ...modalStyles.secondaryButton,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    + Add
+                  </button>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+                  {(formData.color || []).map((c, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '4px 10px',
+                        borderRadius: colors.radius.full,
+                        background: colors.surface,
+                        border: `1px solid ${colors.border}`,
+                        fontSize: '13px',
+                      }}
+                    >
+                      {c}
+                      <X
+                        size={14}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => handleRemoveColor(i)}
+                      />
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sizes */}
+              <div style={modalStyles.formGroup}>
+                <label style={modalStyles.label}>Sizes</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    value={sizeInput}
+                    onChange={(e) => setSizeInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddSize();
+                      }
+                    }}
+                    placeholder="e.g. M, L, XL"
+                    style={modalStyles.input}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddSize}
+                    style={{
+                      ...modalStyles.button,
+                      ...modalStyles.secondaryButton,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    + Add
+                  </button>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+                  {(formData.size || []).map((s, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '4px 10px',
+                        borderRadius: colors.radius.full,
+                        background: colors.surface,
+                        border: `1px solid ${colors.border}`,
+                        fontSize: '13px',
+                      }}
+                    >
+                      {s}
+                      <X
+                        size={14}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => handleRemoveSize(i)}
+                      />
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Product Images */}

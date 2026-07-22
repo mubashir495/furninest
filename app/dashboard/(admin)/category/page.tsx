@@ -1,6 +1,6 @@
 "use client";
 import { format } from "date-fns";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getCategories,
   createCategory,
@@ -16,6 +16,12 @@ export default function CategoriesPage() {
   const [search, setSearch] = useState("");
   const [deleteId, setDeleteId] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  // Image upload state
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [existingImage, setExistingImage] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadCategories = async () => {
     try {
@@ -33,6 +39,21 @@ export default function CategoriesPage() {
     loadCategories();
   }, []);
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview("");
+    setExistingImage("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSubmit = async () => {
     if (!name.trim()) {
       alert("Please enter a category name");
@@ -43,13 +64,12 @@ export default function CategoriesPage() {
       setLoading(true);
 
       if (editingId) {
-        await updateCategory(editingId, name);
+        await updateCategory(editingId, name, imageFile || undefined);
       } else {
-        await createCategory(name);
+        await createCategory(name, imageFile || undefined);
       }
 
-      setName("");
-      setEditingId("");
+      resetForm();
       await loadCategories();
     } catch (error) {
       console.error("Error saving category:", error);
@@ -59,9 +79,21 @@ export default function CategoriesPage() {
     }
   };
 
+  const resetForm = () => {
+    setName("");
+    setEditingId("");
+    setImageFile(null);
+    setImagePreview("");
+    setExistingImage("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleEdit = (cat: any) => {
     setName(cat.name);
     setEditingId(cat._id);
+    setExistingImage(cat.image || "");
+    setImagePreview("");
+    setImageFile(null);
   };
 
   const handleDeleteClick = (id: string) => {
@@ -85,15 +117,15 @@ export default function CategoriesPage() {
   };
 
   const handleCancel = () => {
-    setName("");
-    setEditingId("");
+    resetForm();
   };
 
-  // Filter categories based on search
   const filteredCategories = categories.filter((cat: any) =>
     cat.name.toLowerCase().includes(search.toLowerCase()) ||
     cat.slug?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const displayImage = imagePreview || existingImage;
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -135,44 +167,85 @@ export default function CategoriesPage() {
                 />
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              <div className="relative flex-1 sm:flex-none">
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Category Name"
-                  className="w-full sm:w-64 pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                  onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
-                />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSubmit}
-                  disabled={loading}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 whitespace-nowrap"
-                >
-                  {loading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                      </svg>
-                      {editingId ? "Update" : "Add Category"}
-                    </>
-                  )}
-                </button>
-                {editingId && (
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 mt-4">
+            <div className="flex-1">
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Category Name"
+                className="w-full pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
+              />
+            </div>
+
+            {/* Image Upload */}
+            <div className="flex items-center gap-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+                id="category-image-input"
+              />
+              <label
+                htmlFor="category-image-input"
+                className="cursor-pointer flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-200 whitespace-nowrap"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                {displayImage ? "Change Image" : "Upload Image"}
+              </label>
+
+              {displayImage && (
+                <div className="relative">
+                  <img
+                    src={displayImage}
+                    alt="Preview"
+                    className="w-10 h-10 rounded-lg object-cover border border-gray-200"
+                  />
                   <button
-                    onClick={handleCancel}
-                    className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+                    onClick={handleRemoveImage}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
+                    type="button"
                   >
-                    Cancel
+                    ×
                   </button>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleSubmit}
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2 whitespace-nowrap"
+              >
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    {editingId ? "Update" : "Add Category"}
+                  </>
                 )}
-              </div>
+              </button>
+              {editingId && (
+                <button
+                  onClick={handleCancel}
+                  className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
           </div>
+
           {editingId && (
             <div className="mt-3 text-sm text-blue-600 bg-blue-50 rounded-lg p-2">
               ✏️ Editing category: <span className="font-semibold">{name}</span>
@@ -215,6 +288,9 @@ export default function CategoriesPage() {
                       S.No
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Image
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Name
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -233,6 +309,19 @@ export default function CategoriesPage() {
                     <tr key={cat._id} className="hover:bg-gray-50 transition-colors duration-150">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {index + 1}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {cat.image ? (
+                          <img
+                            src={cat.image}
+                            alt={cat.name}
+                            className="w-10 h-10 rounded-lg object-cover border border-gray-200"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-gray-400 text-xs">
+                            N/A
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">

@@ -1,5 +1,3 @@
-// src/Type/product.ts
-
 export interface Category {
   _id: string;
   name: string;
@@ -31,9 +29,11 @@ export interface Product {
 
   images: string[];
 
+  color?: string[];
+  size?: string[];
+
   sku?: string;
   brand?: string;
-  color?: string;
   material?: string;
   dimensions?: string;
   weight?: string;
@@ -61,9 +61,11 @@ export interface ProductFormData {
 
   images?: string[];
 
+  color?: string[];
+  size?: string[];
+
   sku?: string;
   brand?: string;
-  color?: string;
   material?: string;
   dimensions?: string;
   weight?: string;

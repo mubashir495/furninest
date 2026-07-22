@@ -43,12 +43,11 @@ export default function ProductTable({
   };
 
   const getStatusColor = (status: string) => {
-    return status === 'active' 
+    return status === 'active'
       ? { bg: colors.success[50], text: colors.success[700] }
       : { bg: colors.error[50], text: colors.error[700] };
   };
 
-  // Helper function to get category name
   const getCategoryName = (category: any): string => {
     if (!category) return 'N/A';
     if (typeof category === 'object' && category.name) {
@@ -57,7 +56,6 @@ export default function ProductTable({
     return category || 'N/A';
   };
 
-  // Helper function to get subCategory name
   const getSubCategoryName = (subCategory: any): string => {
     if (!subCategory) return 'N/A';
     if (typeof subCategory === 'object' && subCategory.name) {
@@ -66,7 +64,6 @@ export default function ProductTable({
     return subCategory || 'N/A';
   };
 
-  // Type-safe style objects
   const wrapperStyle: React.CSSProperties = {
     backgroundColor: colors.background,
     borderRadius: colors.radius.lg,
@@ -141,6 +138,19 @@ export default function ProductTable({
     display: 'inline-block',
   };
 
+  const tagBadgeStyle: React.CSSProperties = {
+    display: 'inline-block',
+    padding: '0.15rem 0.5rem',
+    borderRadius: colors.radius.full,
+    fontSize: '0.7rem',
+    fontWeight: 500,
+    backgroundColor: colors.surface,
+    border: `1px solid ${colors.border}`,
+    color: colors.text.secondary,
+    marginRight: '4px',
+    marginBottom: '4px',
+  };
+
   const actionsStyle: React.CSSProperties = {
     display: 'flex',
     gap: '0.5rem',
@@ -210,7 +220,6 @@ export default function ProductTable({
     transition: 'all 0.2s',
   };
 
-  // Ensure products is an array
   const productsArray = Array.isArray(products) ? products : [];
 
   return (
@@ -260,6 +269,8 @@ export default function ProductTable({
               <th style={headerCellStyle}>Price</th>
               <th style={headerCellStyle}>Final Price</th>
               <th style={headerCellStyle}>Stock</th>
+              <th style={headerCellStyle}>Colors</th>
+              <th style={headerCellStyle}>Sizes</th>
               <th style={headerCellStyle}>Status</th>
               <th style={headerCellStyle}>Created</th>
               <th style={headerCellStyle}>Actions</th>
@@ -268,13 +279,13 @@ export default function ProductTable({
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} style={loadingOverlayStyle}>
+                <td colSpan={11} style={loadingOverlayStyle}>
                   <div>Loading products...</div>
                 </td>
               </tr>
             ) : productsArray.length === 0 ? (
               <tr>
-                <td colSpan={9} style={emptyStateStyle}>
+                <td colSpan={11} style={emptyStateStyle}>
                   <div>
                     <p style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '0.5rem' }}>
                       No products found
@@ -289,7 +300,7 @@ export default function ProductTable({
               productsArray.map((product, index) => {
                 const statusColors = getStatusColor(product.status || 'inactive');
                 const rowBgColor = index % 2 === 0 ? colors.background : colors.surface;
-                
+
                 return (
                   <tr
                     key={product._id || index}
@@ -343,6 +354,28 @@ export default function ProductTable({
                       }}>
                         {product.stock || 0}
                       </span>
+                    </td>
+                    <td style={{ ...cellStyle, maxWidth: '160px' }}>
+                      {product.color && product.color.length > 0 ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+                          {product.color.map((c, i) => (
+                            <span key={i} style={tagBadgeStyle}>{c}</span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ color: colors.text.muted }}>N/A</span>
+                      )}
+                    </td>
+                    <td style={{ ...cellStyle, maxWidth: '160px' }}>
+                      {product.size && product.size.length > 0 ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+                          {product.size.map((s, i) => (
+                            <span key={i} style={tagBadgeStyle}>{s}</span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ color: colors.text.muted }}>N/A</span>
+                      )}
                     </td>
                     <td style={cellStyle}>
                       <span style={{
