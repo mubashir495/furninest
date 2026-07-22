@@ -55,21 +55,21 @@ export default function ProductsPage() {
     setSelectedProduct(null);
   };
 
-  const handleSubmit = async (data: ProductFormData, images: File[]) => {
-    setModalLoading(true);
-    try {
-      if (modalType === 'add') {
-        await createProduct(data, images);
-      } else if (modalType === 'edit' && selectedProduct) {
-        await updateProduct(selectedProduct._id, data, images);
-      }
-      handleCloseModal();
-    } catch (error) {
-      console.error('Error submitting form:', error);
-    } finally {
-      setModalLoading(false);
+  const handleSubmit = async (data: ProductFormData, images: File[], thumbnail: File | null) => {
+  setModalLoading(true);
+  try {
+    if (modalType === 'add') {
+      await createProduct(data, images, thumbnail);
+    } else if (modalType === 'edit' && selectedProduct) {
+      await updateProduct(selectedProduct._id, data, images, thumbnail);
     }
-  };
+    handleCloseModal();
+  } catch (error) {
+    console.error('Error submitting form:', error);
+  } finally {
+    setModalLoading(false);
+  }
+};
 
   const handleConfirmDelete = async () => {
     if (selectedProduct) {

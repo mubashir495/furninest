@@ -59,7 +59,7 @@ export function Header() {
     }
   };
 
-  // تھیم کے آپشنز
+  
   const themeOptions: { label: string; value: ThemeMode; icon: React.ReactNode }[] = [
     { label: 'Light', value: 'light', icon: <Sun size={16} /> },
     { label: 'Dark', value: 'dark', icon: <Moon size={16} /> },
@@ -70,7 +70,6 @@ export function Header() {
   const navLinks = [
     { name: 'Home', href: '/' },
     { name: 'Shop', href: '/shop' },
-    { name: 'Categories', href: '/categories' },
     { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
   ];

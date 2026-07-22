@@ -17,9 +17,9 @@ export function useProducts() {
     setError(null);
     try {
       const response = await productService.getProducts(page, 10, search);
-      setProducts(response.products || []);
-      setTotalPages(response.totalPages || 1);
-      setTotal(response.total || 0);
+      setProducts(response.data || []);
+      setTotalPages(response.pagination?.totalPages || 1);
+      setTotal(response.pagination?.total || 0);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch products';
       setError(errorMessage);
@@ -39,7 +39,11 @@ export function useProducts() {
     fetchProducts();
   }, [fetchProducts]);
 
-  const createProduct = async (data: ProductFormData, images: File[]) => {
+  const createProduct = async (
+    data: ProductFormData,
+    images: File[],
+    thumbnail: File | null,
+  ) => {
     const formData = new FormData();
 
     formData.append('name', data.name);
@@ -50,15 +54,18 @@ export function useProducts() {
     formData.append('discount', data.discount.toString());
     formData.append('stock', data.stock.toString());
 
-    // Append color array (one key per value; multer/backend parses repeated keys as array)
     (data.color || []).forEach((c) => formData.append('color', c));
-
-    // Append size array
     (data.size || []).forEach((s) => formData.append('size', s));
 
+    // Gallery images (multiple)
     images.forEach((image) => {
       formData.append('images', image);
     });
+
+    // Thumbnail (single, separate field key)
+    if (thumbnail) {
+      formData.append('thumbnail', thumbnail);
+    }
 
     try {
       const product = await productService.createProduct(formData);
@@ -77,7 +84,12 @@ export function useProducts() {
     }
   };
 
-  const updateProduct = async (id: string, data: ProductFormData, images: File[]) => {
+  const updateProduct = async (
+    id: string,
+    data: ProductFormData,
+    images: File[],
+    thumbnail: File | null,
+  ) => {
     const formData = new FormData();
 
     formData.append('name', data.name);
@@ -94,6 +106,10 @@ export function useProducts() {
     images.forEach((image) => {
       formData.append('images', image);
     });
+
+    if (thumbnail) {
+      formData.append('thumbnail', thumbnail);
+    }
 
     try {
       const product = await productService.updateProduct(id, formData);

@@ -1,16 +1,3 @@
-export interface Category {
-  _id: string;
-  name: string;
-  slug?: string;
-}
-
-export interface SubCategory {
-  _id: string;
-  name: string;
-  slug?: string;
-  category: string | Category;
-}
-
 export interface Product {
   _id: string;
 
@@ -26,7 +13,9 @@ export interface Product {
   price: number;
   discount: number;
   stock: number;
+  finalPrice?: number;
 
+  thumbnailImage?: string;   // ✅ add this
   images: string[];
 
   color?: string[];
@@ -47,18 +36,19 @@ export interface Product {
 
 export interface ProductFormData {
   name: string;
-  slug: string;
+  slug?: string;
 
   shortDescription: string;
   longDescription: string;
 
-  category: string;
+  category?: string;
   subCategory: string;
 
   price: number;
   discount: number;
   stock: number;
 
+  thumbnailImage?: string;   // ✅ add this (existing URL, for edit mode)
   images?: string[];
 
   color?: string[];
@@ -72,37 +62,4 @@ export interface ProductFormData {
 
   featured?: boolean;
   status?: "active" | "inactive";
-}
-
-export interface Pagination {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
-
-export interface PaginatedResponse<T> {
-  success: boolean;
-  message: string;
-  data: T[];
-  pagination: Pagination;
-}
-
-export interface ApiResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
-}
-
-export interface DeleteResponse {
-  success: boolean;
-  message: string;
-}
-
-export interface ProductFilters {
-  search?: string;
-  category?: string;
-  subCategory?: string;
-  page?: number;
-  limit?: number;
 }

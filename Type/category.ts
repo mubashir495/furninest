@@ -1,10 +1,9 @@
-// Client-side category & subcategory types — mirror backend schemas exactly.
-// (Admin panel uses its own Type/category_type-equivalent shapes in Type/products.ts — do not merge.)
 
 export interface Category {
   _id: string;
   name: string;
   slug: string;
+  image?: string;          
   created_date: string;
   updated_date: string;
 }

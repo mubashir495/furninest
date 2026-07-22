@@ -47,9 +47,10 @@ export default function CategoriesPage() {
         ) : (
           <div className="space-y-16">
             {catalog.map((category, idx) => {
-              const image =
-                category.subCategories.flatMap((sc) => sc.products).find((p) => p.thumbnailImage)?.thumbnailImage ||
-                '/window.svg';
+             const image =
+  category.image ||
+  category.subCategories.flatMap((sc) => sc.products).find((p) => p.thumbnailImage)?.thumbnailImage ||
+  '/window.svg';
               return (
                 <motion.div key={category._id} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: idx * 0.05 }}>
                   <Link href={`/category/${category.slug}`} className="group flex flex-col md:flex-row gap-6 items-center bg-card rounded-3xl soft-shadow overflow-hidden">
