@@ -10,9 +10,9 @@ export interface CustomTheme {
 }
 
 export const defaultCustomTheme: CustomTheme = {
-  primary: '#3b82f6',    
-  secondary: '#6b7280',  
-  background: '#ffffff',
-  surface: '#f9fafb',
-  text: '#111827',
+  primary: '#D4A373',      // Luxury Gold
+  secondary: '#94A3B8',    // Soft Gray
+  background: '#121212',   // Deep Black
+  surface: '#1E1E1E',      // Card Background
+  text: '#F8FAFC',         // White
 };

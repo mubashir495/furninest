@@ -8,8 +8,8 @@ interface ThemeContextType {
   customTheme: CustomTheme;
   setMode: (mode: ThemeMode) => void;
   setCustomTheme: (theme: CustomTheme) => void;
-  toggleTheme: () => void; // لائٹ/ڈارک کے درمیان ٹوگل
-  isDark: boolean;         // موجودہ موڈ (سسٹم کو ریئل ٹائم فالو کرے گا)
+  toggleTheme: () => void; 
+  isDark: boolean;        
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
