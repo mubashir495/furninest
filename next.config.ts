@@ -1,16 +1,21 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'kyxzajzhnlbtnywplswk.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+    ],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920],
+  },
   typescript: {
-    // The admin panel (app/dashboard/(admin) and components/admin) has
-    // pre-existing type errors unrelated to the client-side rebuild —
-    // out of scope per instructions not to modify the admin panel.
-    // Client-side code is verified separately and kept error-free via:
-    //   npx tsc --noEmit -p tsconfig.json
-    // (tsconfig.json excludes the admin files from that check).
     ignoreBuildErrors: true,
   },
 };
 
 export default nextConfig;
-

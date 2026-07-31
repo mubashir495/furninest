@@ -1,6 +1,3 @@
-// Client-side product types — mirror backend Product schema exactly.
-// The backend does NOT support server-side search/pagination/filtering on
-// GET /products, so all listing/filtering/sorting/pagination happens client-side.
 
 import { Category, SubCategory } from './category';
 
@@ -24,7 +21,6 @@ export interface Product {
   updated_date: string;
 }
 
-// GET /products/:id and /products/slug/:slug attach `suggestions`
 export interface ProductDetail extends Product {
   suggestions: ProductSuggestion[];
 }
@@ -64,4 +60,27 @@ export function getCategoryName(product: Product): string {
 
 export function getSubCategoryName(product: Product): string {
   return typeof product.subCategory === 'string' ? '' : product.subCategory?.name ?? '';
+}
+
+export function suggestionToProduct(s: ProductSuggestion): Product {
+  const finalPrice = s.discount > 0 ? Math.round(s.price - (s.price * s.discount) / 100) : s.price;
+  return {
+    _id: s._id,
+    name: s.name,
+    slug: s.slug,
+    shortDescription: '',
+    longDescription: '',
+    price: s.price,
+    discount: s.discount,
+    finalPrice,
+    stock: s.stock,
+    thumbnailImage: s.thumbnailImage,
+    images: s.images,
+    category: '',
+    subCategory: '',
+    isActive: true,
+    created_date: '',
+    updated_date: '',
+  };
+
 }
