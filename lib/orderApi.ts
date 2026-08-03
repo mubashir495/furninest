@@ -1,17 +1,17 @@
 import api from './axios';
-import { AdminOrder, Order, OrderStatus } from '@/Type/order';
+import { AdminOrder, OrderStatus } from '@/Type/order';
 
 export const getAllOrders = async (status?: OrderStatus): Promise<AdminOrder[]> => {
   const res = await api.get('/orders', { params: status ? { status } : undefined });
   return res.data.data ?? [];
 };
 
-export const getOrderById = async (id: string): Promise<Order> => {
+export const getOrderById = async (id: string): Promise<AdminOrder> => {
   const res = await api.get(`/orders/${id}`);
   return res.data.data;
 };
 
-export const updateOrderStatus = async (id: string, status: OrderStatus): Promise<Order> => {
+export const updateOrderStatus = async (id: string, status: OrderStatus): Promise<AdminOrder> => {
   const res = await api.patch(`/orders/${id}/status`, { status });
   return res.data.data;
 };

@@ -16,6 +16,7 @@ export interface OrderItem {
 }
 
 export interface Order {
+  id?: string;
   _id: string;
   user: string;
   orderNumber: string;

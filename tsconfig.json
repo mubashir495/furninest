@@ -30,8 +30,6 @@
   ],
   "exclude": [
     "node_modules",
-    "app/dashboard/**/*",
-    "components/admin/**/*",
     "lib/productService.ts",
     "hooks/useProducts.ts"
   ]

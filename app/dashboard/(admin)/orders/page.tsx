@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Package, Eye, X, Truck, CheckCircle2, Clock, XCircle } from 'lucide-react';
+import Link from 'next/link';
+import { Package, Eye, Truck, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { getAllOrders, updateOrderStatus } from '@/lib/orderApi';
-import { AdminOrder, Order, OrderStatus, ORDER_STATUS_LABELS } from '@/Type/order';
+import { getAllOrders } from '@/lib/orderApi';
+import { AdminOrder, OrderStatus, ORDER_STATUS_LABELS } from '@/Type/order';
 
 const STATUS_TABS: { id: OrderStatus | 'ALL'; label: string }[] = [
   { id: 'ALL', label: 'All' },
@@ -44,8 +45,6 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<OrderStatus | 'ALL'>('ALL');
-  const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   function load() {
     setIsLoading(true);
@@ -72,20 +71,6 @@ export default function AdminOrdersPage() {
   }, [orders]);
 
   const filteredOrders = activeTab === 'ALL' ? orders : orders.filter((o) => o.status === activeTab);
-
-  async function handleStatusChange(order: AdminOrder, status: OrderStatus) {
-    setUpdatingId(order._id);
-    try {
-      await updateOrderStatus(order._id, status);
-      toast.success(`Order #${order.orderNumber} marked as ${ORDER_STATUS_LABELS[status]}`);
-      load();
-      setSelectedOrder(null);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not update order status.');
-    } finally {
-      setUpdatingId(null);
-    }
-  }
 
   return (
     <div>
@@ -158,12 +143,12 @@ export default function AdminOrdersPage() {
                       </span>
                     </td>
                     <td className="px-5 py-4 text-right">
-                      <button
-                        onClick={() => setSelectedOrder(order)}
+                      <Link
+                        href={`/dashboard/orders/${order._id ?? order.id}`}
                         className="inline-flex items-center gap-1.5 text-[#8B5E34] hover:underline text-sm font-medium"
                       >
                         <Eye size={15} /> View
-                      </button>
+                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -174,79 +159,6 @@ export default function AdminOrdersPage() {
       </div>
 
       {/* Detail / status update modal */}
-      {selectedOrder && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6" onClick={() => setSelectedOrder(null)}>
-          <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-[#2B2420]">Order #{selectedOrder.orderNumber}</h2>
-              <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-[#F5EFE3] rounded-full">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-1 mb-4 text-sm">
-              <p className="text-[#2B2420] font-medium">{customerName(selectedOrder)}</p>
-              <p className="text-[#8B7B6F]">{customerEmail(selectedOrder)}</p>
-            </div>
-
-            <div className="mb-4">
-              <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${STATUS_STYLES[selectedOrder.status]}`}>
-                {ORDER_STATUS_LABELS[selectedOrder.status]}
-              </span>
-              {selectedOrder.deliveredAt && (
-                <p className="text-xs text-[#8B7B6F] mt-2">
-                  Delivered on {new Date(selectedOrder.deliveredAt).toLocaleDateString()}
-                </p>
-              )}
-              {selectedOrder.cancelledAt && (
-                <p className="text-xs text-[#8B7B6F] mt-2">
-                  Cancelled on {new Date(selectedOrder.cancelledAt).toLocaleDateString()}
-                </p>
-              )}
-            </div>
-
-            <div className="mb-4 p-4 bg-[#FBF7F2] rounded-xl text-sm">
-              <p className="font-medium text-[#2B2420] mb-1">Shipping Address</p>
-              <p className="text-[#5C5248]">
-                {selectedOrder.shippingAddress.fullName} · {selectedOrder.shippingAddress.phone}
-              </p>
-              <p className="text-[#5C5248]">
-                {selectedOrder.shippingAddress.addressLine1}, {selectedOrder.shippingAddress.city},{' '}
-                {selectedOrder.shippingAddress.state} {selectedOrder.shippingAddress.postalCode}
-              </p>
-            </div>
-
-            <div className="flex justify-between items-center mb-6 text-sm">
-              <span className="text-[#8B7B6F]">Total ({selectedOrder.totalItems} items)</span>
-              <span className="text-lg font-bold text-[#2B2420]">Rs {selectedOrder.totalAmount.toLocaleString()}</span>
-            </div>
-
-            {NEXT_STATUSES[selectedOrder.status].length > 0 ? (
-              <div>
-                <p className="text-xs font-semibold text-[#8B7B6F] uppercase tracking-wider mb-2">Update Status</p>
-                <div className="flex flex-wrap gap-2">
-                  {NEXT_STATUSES[selectedOrder.status].map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => handleStatusChange(selectedOrder, status)}
-                      disabled={updatingId === selectedOrder._id}
-                      className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors disabled:opacity-50 ${
-                        status === 'CANCELLED'
-                          ? 'bg-red-50 text-red-600 hover:bg-red-100'
-                          : 'bg-[#8B5E34] text-white hover:bg-[#6E4A29]'
-                      }`}
-                    >
-                      {updatingId === selectedOrder._id ? 'Updating…' : `Mark as ${ORDER_STATUS_LABELS[status]}`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-[#8B7B6F]">This order is in a final state and cannot be updated further.</p>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -10,6 +10,7 @@ const navItems = [
   { label: 'Categories', href: '/dashboard/category', icon: 'M4 6h16M4 12h16M4 18h7' },
   { label: 'Sub-Categories', href: '/dashboard/subcategory', icon: 'M9 5H5a2 2 0 00-2 2v10a2 2 0 002 2h4m6-14h4a2 2 0 012 2v10a2 2 0 01-2 2h-4M9 5v14' },
   { label: 'Orders', href: '/dashboard/orders', icon: 'M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z' },
+  { label: 'Customers', href: '/dashboard/customers', icon: 'M16 12a4 4 0 10-8 0 4 4 0 008 0zm-4 7c-4.418 0-8 1.79-8 4v1h16v-1c0-2.21-3.582-4-8-4z' },
 ];
 
 export function AdminSidebar() {
@@ -43,7 +44,7 @@ export function AdminSidebar() {
                   : 'text-[#5C5248] hover:bg-[#F5EFE3]'
               }`}
             >
-              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
               </svg>
               {item.label}
