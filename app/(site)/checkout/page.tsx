@@ -12,6 +12,7 @@ import { orderService } from '@/services/orderService';
 import { ShippingAddress, ShippingAddressInput } from '@/Type/address';
 import { PaymentMethod } from '@/Type/order';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { formatCurrency } from '@/utils/validators';
 
 const emptyAddressForm: ShippingAddressInput = {
   label: 'Home',
@@ -224,14 +225,14 @@ export default function CheckoutPage() {
               {items.map((item) => (
                 <div key={item._id} className="flex justify-between text-sm text-white/80">
                   <span>{item.product.name} × {item.quantity}</span>
-                  <span className="text-white font-medium">Rs {item.subtotal.toLocaleString()}</span>
+                  <span className="text-white font-medium">{formatCurrency(item.subtotal)}</span>
                 </div>
               ))}
             </div>
 
             <div className="border-t border-white/20 pt-6 mb-8 flex justify-between items-end">
               <span className="text-lg">Total</span>
-              <span className="text-4xl font-bold font-serif text-accent">Rs {(cart?.totalPrice ?? 0).toLocaleString()}</span>
+              <span className="text-4xl font-bold font-serif text-accent">{formatCurrency((cart?.totalPrice ?? 0))}</span>
             </div>
 
             <button

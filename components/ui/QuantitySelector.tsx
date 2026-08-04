@@ -1,6 +1,7 @@
 import React from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { Button } from './button';
+import { cn } from '@/lib/utils';
 
 interface QuantitySelectorProps {
   quantity: number;
@@ -20,7 +21,7 @@ export function QuantitySelector({
   className = '',
 }: QuantitySelectorProps) {
   return (
-    <div className={`flex items-center border border-border rounded-md ${className}`}>
+    <div className={cn('flex items-center border border-border rounded-md', className)}>
       <Button
         type="button"
         variant="ghost"

@@ -9,6 +9,7 @@ import { useWishlistStore } from '@/store/wishlistStore';
 import { useCartStore } from '@/store/cartStore';
 import { useAuth } from '@/context/AuthContext';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { formatCurrency } from '@/utils/validators';
 
 export default function WishlistPage() {
   usePageTitle('Wishlist');
@@ -107,7 +108,7 @@ export default function WishlistPage() {
                   {item.product.name}
                 </h3>
               </Link>
-              <div className="text-lg font-bold text-primary mb-4">Rs {item.product.price.toLocaleString()}</div>
+              <div className="text-lg font-bold text-primary mb-4">{formatCurrency(item.product.price)}</div>
               <button
                 onClick={() => handleAddToCart(item.product._id, item.product.name)}
                 disabled={item.product.stock === 0}

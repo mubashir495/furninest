@@ -3,10 +3,12 @@ import type { Metadata } from 'next';
 import { getProductBySlug, getAllProductSlugs } from '@/lib/data/products';
 import { getCategoryName, suggestionToProduct } from '@/Type/product';
 import { ProductGallery } from '@/components/products/ProductGallery';
+import { ProductInfoCard } from '@/components/products/ProductInfoCard';
 import { AddToCartPanel } from '@/components/products/AddToCartPanel';
 import { ProductTabs } from '@/components/products/ProductTabs';
 import { ProductCarousel } from '@/components/products/ProductCarousel';
 import Link from 'next/link';
+import { formatCurrency } from '@/utils/validators';
 
 export const revalidate = 60;
 
@@ -53,7 +55,7 @@ export default async function ProductDetailPage({ params }: Props) {
     description: product.shortDescription,
     offers: {
       '@type': 'Offer',
-      priceCurrency: 'PKR',
+      priceCurrency: 'GBP',
       price: product.finalPrice,
       availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
       url: `https://furninest.example.com/product/${slug}`,
@@ -78,9 +80,10 @@ export default async function ProductDetailPage({ params }: Props) {
         <div className="flex flex-col lg:flex-row gap-16 mb-24">
           <ProductGallery images={gallery} productName={product.name} discount={product.discount} />
           <div className="w-full lg:w-1/2">
-            <h1 className="text-4xl md:text-5xl font-serif text-primary mb-6">{product.name}</h1>
+            <h1 className="text-4xl md:text-5xl font-serif text-primary mb-4">{product.name}</h1>
             {/* static price/stock markup rendered on the server — good for SEO/rich snippets */}
-            <p className="text-4xl font-bold text-primary mb-8">Rs {product.finalPrice.toLocaleString()}</p>
+            <p className="text-4xl font-bold text-primary mb-8">{formatCurrency(product.finalPrice)}</p>
+            <ProductInfoCard product={product} />
             <AddToCartPanel product={product} />
           </div>
         </div>

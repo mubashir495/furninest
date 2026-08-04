@@ -7,6 +7,7 @@ import { CheckCircle2 } from 'lucide-react';
 import { orderService } from '@/services/orderService';
 import { Order } from '@/Type/order';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { formatCurrency } from '@/utils/validators';
 
 function OrderSuccessContent() {
   usePageTitle('Order Confirmed');
@@ -50,7 +51,7 @@ function OrderSuccessContent() {
           </div>
           <div className="flex justify-between pt-3 border-t border-border">
             <span className="text-sm text-muted-foreground">Total</span>
-            <span className="text-xl font-bold text-primary">Rs {order.totalAmount.toLocaleString()}</span>
+            <span className="text-xl font-bold text-primary">{formatCurrency(order.totalAmount)}</span>
           </div>
         </div>
       )}

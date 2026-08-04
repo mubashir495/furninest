@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { QuickViewModal } from './QuickViewModal';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { formatCurrency } from '@/utils/validators';
 
 function isNewProduct(createdDate: string) {
   const days = (Date.now() - new Date(createdDate).getTime()) / (1000 * 60 * 60 * 24);
@@ -131,9 +132,9 @@ export function ProductCard({ product }: { product: Product }) {
           <div className="mt-auto flex items-center justify-between gap-3">
             <div className="flex flex-col leading-tight">
               {onSale && (
-                <span className="text-xs line-through text-muted-foreground">Rs {product.price.toLocaleString()}</span>
+                <span className="text-xs line-through text-muted-foreground">{formatCurrency(product.price)}</span>
               )}
-              <span className="text-xl font-bold text-primary">Rs {product.finalPrice.toLocaleString()}</span>
+              <span className="text-xl font-bold text-primary">{formatCurrency(product.finalPrice)}</span>
             </div>
 
             <button
@@ -152,4 +153,3 @@ export function ProductCard({ product }: { product: Product }) {
     </>
   );
 }
-

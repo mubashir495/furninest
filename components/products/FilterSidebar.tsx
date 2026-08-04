@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import { CatalogCategory } from '@/Type/category';
+import { formatCurrency } from '@/utils/validators';
 
 interface FilterSidebarProps {
   catalog: CatalogCategory[];
@@ -168,8 +169,8 @@ export function FilterSidebar({
             className="w-full accent-primary h-2 bg-muted rounded-full appearance-none"
           />
           <div className="flex justify-between mt-3 text-sm font-medium text-muted-foreground">
-            <span>Rs 0</span>
-            <span>Rs {priceRange.toLocaleString()}</span>
+            <span>{formatCurrency(0)}</span>
+            <span>{formatCurrency(priceRange)}</span>
           </div>
         </div>
 

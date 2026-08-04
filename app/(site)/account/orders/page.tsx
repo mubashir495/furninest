@@ -6,6 +6,7 @@ import { Package } from 'lucide-react';
 import { orderService } from '@/services/orderService';
 import { Order, ORDER_STATUS_LABELS, OrderStatus } from '@/Type/order';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { formatCurrency } from '@/utils/validators';
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -73,7 +74,7 @@ export default function OrdersPage() {
                 <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${STATUS_COLORS[order.status]}`}>
                   {ORDER_STATUS_LABELS[order.status]}
                 </span>
-                <span className="text-lg font-bold text-primary">Rs {order.totalAmount.toLocaleString()}</span>
+                <span className="text-lg font-bold text-primary">{formatCurrency(order.totalAmount)}</span>
               </div>
             </Link>
           ))}

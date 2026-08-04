@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { QuantitySelector } from '@/components/ui/QuantitySelector';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import { formatCurrency } from '@/utils/validators';
 
 interface QuickViewModalProps {
   product: Product;
@@ -104,8 +105,8 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
             <h2 className="text-3xl font-serif text-primary mb-2 leading-tight pr-8">{product.name}</h2>
 
             <div className="text-2xl font-bold text-primary mb-6 flex items-center gap-3">
-              Rs {product.finalPrice.toLocaleString()}
-              {onSale && <span className="text-lg line-through text-muted-foreground">Rs {product.price.toLocaleString()}</span>}
+              {formatCurrency(product.finalPrice)}
+              {onSale && <span className="text-lg line-through text-muted-foreground">{formatCurrency(product.price)}</span>}
             </div>
 
             <p className="text-muted-foreground text-sm mb-8 leading-relaxed line-clamp-3">{product.shortDescription}</p>

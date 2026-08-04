@@ -9,6 +9,7 @@ import { useWishlistStore } from '@/store/wishlistStore';
 import { orderService } from '@/services/orderService';
 import { Order, ORDER_STATUS_LABELS } from '@/Type/order';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { formatCurrency } from '@/utils/validators';
 
 export default function AccountOverviewPage() {
   usePageTitle('My Account');
@@ -85,7 +86,7 @@ export default function AccountOverviewPage() {
                   <p className="text-xs text-muted-foreground">{new Date(order.created_date).toLocaleDateString()}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-primary">Rs {order.totalAmount.toLocaleString()}</p>
+                  <p className="font-semibold text-primary">{formatCurrency(order.totalAmount)}</p>
                   <p className="text-xs text-muted-foreground">{ORDER_STATUS_LABELS[order.status]}</p>
                 </div>
               </Link>

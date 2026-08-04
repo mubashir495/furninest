@@ -20,6 +20,7 @@ import { productService } from '@/services/productService';
 import { AdminOrder, OrderStatus, ORDER_STATUS_LABELS } from '@/Type/order';
 import { Product } from '@/Type/product';
 import { Category } from '@/Type/category';
+import { formatCurrency } from '@/utils/validators';
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -145,7 +146,7 @@ export default function AdminDashboardPage() {
                     <td className="px-5 py-3.5 font-medium text-[#2B2420]">#{order.orderNumber}</td>
                     <td className="px-5 py-3.5 text-[#5C5248]">{customerName(order)}</td>
                     <td className="px-5 py-3.5 text-[#5C5248]">{new Date(order.created_date).toLocaleDateString()}</td>
-                    <td className="px-5 py-3.5 font-semibold text-[#2B2420]">Rs {order.totalAmount.toLocaleString()}</td>
+                    <td className="px-5 py-3.5 font-semibold text-[#2B2420]">{formatCurrency(order.totalAmount)}</td>
                     <td className="px-5 py-3.5">
                       <span className={`text-xs font-bold px-3 py-1 rounded-full ${STATUS_STYLES[order.status]}`}>
                         {ORDER_STATUS_LABELS[order.status]}

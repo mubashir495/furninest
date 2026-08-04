@@ -6,6 +6,7 @@ import { Package, Eye, Truck, CheckCircle2, Clock, XCircle } from 'lucide-react'
 import { toast } from 'sonner';
 import { getAllOrders } from '@/lib/orderApi';
 import { AdminOrder, OrderStatus, ORDER_STATUS_LABELS } from '@/Type/order';
+import { formatCurrency } from '@/utils/validators';
 
 const STATUS_TABS: { id: OrderStatus | 'ALL'; label: string }[] = [
   { id: 'ALL', label: 'All' },
@@ -136,7 +137,7 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="px-5 py-4 text-[#5C5248]">{new Date(order.created_date).toLocaleDateString()}</td>
                     <td className="px-5 py-4 text-[#5C5248]">{order.totalItems}</td>
-                    <td className="px-5 py-4 font-semibold text-[#2B2420]">Rs {order.totalAmount.toLocaleString()}</td>
+                    <td className="px-5 py-4 font-semibold text-[#2B2420]">{formatCurrency(order.totalAmount)}</td>
                     <td className="px-5 py-4">
                       <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${STATUS_STYLES[order.status]}`}>
                         {ORDER_STATUS_LABELS[order.status]}

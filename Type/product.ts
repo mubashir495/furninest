@@ -1,4 +1,3 @@
-
 import { Category, SubCategory } from './category';
 
 export interface Product {
@@ -19,6 +18,10 @@ export interface Product {
   isActive: boolean;
   created_date: string;
   updated_date: string;
+  color?: string[];
+  size?: string[];
+  sku?: string;
+  brand?: string;
 }
 
 export interface ProductDetail extends Product {

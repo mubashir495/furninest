@@ -9,6 +9,7 @@ import { useCartStore } from '@/store/cartStore';
 import { useAuth } from '@/context/AuthContext';
 import { QuantitySelector } from '@/components/ui/QuantitySelector';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { formatCurrency } from '@/utils/validators';
 
 export default function CartPage() {
   usePageTitle('Shopping Cart');
@@ -119,7 +120,7 @@ export default function CartPage() {
                     <h3 className="font-serif text-lg font-semibold text-primary hover:text-accent transition-colors">
                       <Link href={`/product/${item.product.slug}`}>{item.product.name}</Link>
                     </h3>
-                    <p className="text-sm text-muted-foreground mt-1">Rs {item.price.toLocaleString()} each</p>
+                    <p className="text-sm text-muted-foreground mt-1">{formatCurrency(item.price)} each</p>
                     {!item.product.isActive && <p className="text-xs text-destructive mt-1">No longer available</p>}
                   </div>
                 </div>
@@ -135,7 +136,7 @@ export default function CartPage() {
                 </div>
 
                 <div className="col-span-1 md:col-span-2 text-left md:text-right font-bold text-lg text-primary">
-                  Rs {item.subtotal.toLocaleString()}
+                  {formatCurrency(item.subtotal)}
                 </div>
 
                 <div className="col-span-1 flex justify-end">
@@ -164,19 +165,19 @@ export default function CartPage() {
             <div className="space-y-4 mb-8 text-white/80">
               <div className="flex justify-between">
                 <span>Items ({cart?.totalItems ?? 0})</span>
-                <span className="font-medium text-white">Rs {(cart?.totalPrice ?? 0).toLocaleString()}</span>
+                <span className="font-medium text-white">{formatCurrency((cart?.totalPrice ?? 0))}</span>
               </div>
               {savings > 0 && (
                 <div className="flex justify-between text-accent">
                   <span>You&apos;re saving</span>
-                  <span className="font-medium">Rs {savings.toLocaleString()}</span>
+                  <span className="font-medium">{formatCurrency(savings)}</span>
                 </div>
               )}
             </div>
 
             <div className="border-t border-white/20 pt-6 mb-8 flex justify-between items-end">
               <span className="text-lg">Total</span>
-              <span className="text-4xl font-bold font-serif text-accent">Rs {(cart?.totalPrice ?? 0).toLocaleString()}</span>
+              <span className="text-4xl font-bold font-serif text-accent">{formatCurrency((cart?.totalPrice ?? 0))}</span>
             </div>
 
             <Link href="/checkout" className="w-full bg-accent text-accent-foreground flex items-center justify-center gap-2 py-4 rounded-2xl font-bold uppercase tracking-wider hover:bg-white transition-colors">

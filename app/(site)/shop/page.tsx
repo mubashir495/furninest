@@ -11,6 +11,7 @@ import { FilterSidebar } from '@/components/products/FilterSidebar';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { Product, ProductFilter, SortOption } from '@/Type/product';
 import { CatalogCategory } from '@/Type/category';
+import { formatCurrency } from '@/utils/validators';
 
 const SORT_OPTIONS: { id: SortOption; label: string }[] = [
   { id: 'featured', label: 'Featured' },
@@ -194,7 +195,7 @@ function ShopContent() {
                 )}
                 {maxPriceParam && (
                   <span className="bg-primary text-primary-foreground text-xs px-3 py-1.5 rounded-full flex items-center gap-1">
-                    Up to Rs {Number(maxPriceParam).toLocaleString()}
+                    Up to {formatCurrency(Number(maxPriceParam))}
                     <X size={12} className="cursor-pointer" onClick={() => updateParam('maxPrice', null)} />
                   </span>
                 )}

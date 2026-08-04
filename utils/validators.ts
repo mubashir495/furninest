@@ -38,12 +38,20 @@ export const validators = {
   },
 };
 
-export function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('en-US', {
+/**
+ * Reusable currency formatter for the entire app.
+ * Formats numeric amounts as British Pounds, e.g. £99, £99.99, £1,299.99.
+ * Every component/page that displays a price should use this helper
+ * instead of hand-rolled "Rs"/"$"/toLocaleString() formatting.
+ */
+export function formatCurrency(amount: number | null | undefined) {
+  const value = typeof amount === 'number' && !Number.isNaN(amount) ? amount : 0;
+  return new Intl.NumberFormat('en-GB', {
     style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(amount);
+    currency: 'GBP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 export function formatDate(dateString: string) {

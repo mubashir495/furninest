@@ -119,11 +119,7 @@ class ProductService {
 
   async createProduct(data: FormData): Promise<Product> {
     try {
-      const response = await api.post('/products', data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.post('/products', data);
       const result = this.handleResponse<ApiResponse<Product>>(response);
       return result.data;
     } catch (error) {
@@ -133,11 +129,7 @@ class ProductService {
 
   async updateProduct(id: string, data: FormData): Promise<Product> {
     try {
-      const response = await api.patch(`/products/${id}`, data, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.patch(`/products/${id}`, data);
       const result = this.handleResponse<ApiResponse<Product>>(response);
       return result.data;
     } catch (error) {
