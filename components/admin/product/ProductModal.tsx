@@ -38,12 +38,15 @@ const modalStyles = {
   },
   modal: {
     width: '100%',
-    maxWidth: '900px',
+    maxWidth: '1200px',
     maxHeight: '90vh',
     overflowY: 'auto' as const,
     background: colors.background,
     borderRadius: colors.radius.xl,
     boxShadow: colors.shadow.xl,
+    transformOrigin: 'center',
+    transform: 'scaleX(1)',
+    transition: 'transform 0.2s ease, opacity 0.2s ease',
   },
   header: {
     display: 'flex',
@@ -224,6 +227,8 @@ export default function ProductModal({
   const { products: suggestionCandidates, loading: suggestionsLoading } = useAllProducts(initialData?._id);
 
   useEffect(() => {
+    setErrors({});
+
     if (initialData) {
       const categoryId = typeof initialData.category === 'object'
         ? (initialData.category as Category)._id
@@ -403,13 +408,21 @@ export default function ProductModal({
 
   const handleAddColor = () => {
     const trimmed = colorInput.trim();
-    if (trimmed && !(formData.color || []).includes(trimmed)) {
-      setFormData((prev) => ({
-        ...prev,
-        color: [...(prev.color || []), trimmed],
-      }));
-      setColorInput('');
+    if (!trimmed) {
+      setErrors((prev) => ({ ...prev, color: 'Please enter a color' }));
+      return;
     }
+    const normalized = trimmed.toLowerCase();
+    if ((formData.color || []).some((item) => item.toLowerCase() === normalized)) {
+      setErrors((prev) => ({ ...prev, color: 'This color is already added' }));
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      color: [...(prev.color || []), trimmed],
+    }));
+    setColorInput('');
+    setErrors((prev) => ({ ...prev, color: '' }));
   };
 
   const handleRemoveColor = (index: number) => {
@@ -421,13 +434,21 @@ export default function ProductModal({
 
   const handleAddSize = () => {
     const trimmed = sizeInput.trim();
-    if (trimmed && !(formData.size || []).includes(trimmed)) {
-      setFormData((prev) => ({
-        ...prev,
-        size: [...(prev.size || []), trimmed],
-      }));
-      setSizeInput('');
+    if (!trimmed) {
+      setErrors((prev) => ({ ...prev, size: 'Please enter a size' }));
+      return;
     }
+    const normalized = trimmed.toLowerCase();
+    if ((formData.size || []).some((item) => item.toLowerCase() === normalized)) {
+      setErrors((prev) => ({ ...prev, size: 'This size is already added' }));
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      size: [...(prev.size || []), trimmed],
+    }));
+    setSizeInput('');
+    setErrors((prev) => ({ ...prev, size: '' }));
   };
 
   const handleRemoveSize = (index: number) => {
@@ -589,7 +610,12 @@ export default function ProductModal({
                   <input
                     type="text"
                     value={colorInput}
-                    onChange={(e) => setColorInput(e.target.value)}
+                    onChange={(e) => {
+                      setColorInput(e.target.value);
+                      if (errors.color) {
+                        setErrors((prev) => ({ ...prev, color: '' }));
+                      }
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -611,6 +637,7 @@ export default function ProductModal({
                     + Add
                   </button>
                 </div>
+                {errors.color && <p style={modalStyles.error}>{errors.color}</p>}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
                   {(formData.color || []).map((c, i) => (
                     <span
@@ -644,7 +671,12 @@ export default function ProductModal({
                   <input
                     type="text"
                     value={sizeInput}
-                    onChange={(e) => setSizeInput(e.target.value)}
+                    onChange={(e) => {
+                      setSizeInput(e.target.value);
+                      if (errors.size) {
+                        setErrors((prev) => ({ ...prev, size: '' }));
+                      }
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -666,6 +698,7 @@ export default function ProductModal({
                     + Add
                   </button>
                 </div>
+                {errors.size && <p style={modalStyles.error}>{errors.size}</p>}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
                   {(formData.size || []).map((s, i) => (
                     <span

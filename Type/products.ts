@@ -96,5 +96,6 @@ export interface ProductFormData {
   weight?: string;
 
   featured?: boolean;
+  isActive?: boolean;
   status?: "active" | "inactive";
 }

@@ -83,6 +83,7 @@ class ProductService {
         color: item.color || [],
         size: item.size || [],
         suggestionItems: item.suggestionItems || [],
+        isActive: item.isActive ?? false,
         status: item.isActive ? 'active' : 'inactive',
         createdAt: item.created_date || item.createdAt || new Date().toISOString(),
         updatedAt: item.updated_date || item.updatedAt || new Date().toISOString(),

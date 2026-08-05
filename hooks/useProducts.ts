@@ -78,13 +78,8 @@
       formData.append('discount', data.discount.toString());
       formData.append('stock', data.stock.toString());
 
-      if (data.color && data.color.length > 0) {
-        formData.append('color', JSON.stringify(data.color));
-      }
-
-      if (data.size && data.size.length > 0) {
-        formData.append('size', JSON.stringify(data.size));
-      }
+      formData.append('color', JSON.stringify(data.color || []));
+      formData.append('size', JSON.stringify(data.size || []));
 
       if (data.suggestionItems && data.suggestionItems.length > 0) {
         formData.append('suggestionItems', JSON.stringify(data.suggestionItems));
@@ -131,13 +126,8 @@
       formData.append('discount', data.discount.toString());
       formData.append('stock', data.stock.toString());
 
-      if (data.color && data.color.length > 0) {
-        formData.append('color', JSON.stringify(data.color));
-      }
-
-      if (data.size && data.size.length > 0) {
-        formData.append('size', JSON.stringify(data.size));
-      }
+      formData.append('color', JSON.stringify(data.color || []));
+      formData.append('size', JSON.stringify(data.size || []));
 
       if (data.suggestionItems) {
         formData.append('suggestionItems', JSON.stringify(data.suggestionItems));
