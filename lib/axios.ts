@@ -4,8 +4,7 @@ import axios, {
 } from 'axios';
 
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  'https://furninest-backend-three.vercel.app/api';
+  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api';
 
 const ACCESS_TOKEN_KEY = 'furninest_access_token';
 const REFRESH_TOKEN_KEY = 'furninest_refresh_token';

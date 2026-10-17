@@ -93,7 +93,7 @@ export function Header() {
   const navLinks = [
     { name: 'Home', href: '/' },
     { name: 'Shop', href: '/shop' },
-    { name: 'category', href: '/categories' },
+    { name: 'Categories', href: '/categories' },
     { name: 'About', href: '/about' },
     { name: 'Contact', href: '/contact' },
   ];
@@ -118,7 +118,7 @@ export function Header() {
 
             <Link href="/" className="flex-shrink-0">
               <span className="font-serif text-2xl md:text-3xl font-bold tracking-widest uppercase text-primary">
-                LUXE
+                LUXA<span className="hidden sm:inline"> FURNITURE</span>
               </span>
             </Link>
 

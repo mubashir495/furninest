@@ -15,34 +15,34 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://furninest-pi.vercel.app";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://luxafurniture.co.uk";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "FurniNest — Modern Furniture for Every Home",
-    template: "%s | FurniNest",
+    default: "LUXA FURNITURE — Premium Furniture for Every UK Home",
+    template: "%s | LUXA FURNITURE",
   },
   description:
-    "Shop premium sofas, beds, tables and decor at FurniNest. Fast delivery, quality craftsmanship.",
-  keywords: ["furniture", "sofa", "bed", "table", "home decor", "FurniNest"],
-  authors: [{ name: "FurniNest" }],
-  creator: "FurniNest",
+    "Shop premium sofas, chairs, tables and furniture sets at LUXA FURNITURE. Quality craftsmanship, UK delivery.",
+  keywords: ["LUXA FURNITURE", "UK furniture", "luxury sofas UK", "furniture", "sofa", "bed", "table", "home decor"],
+  authors: [{ name: "LUXA FURNITURE" }],
+  creator: "LUXA FURNITURE",
   openGraph: {
     type: "website",
-    locale: "en_US",
+    locale: "en_GB",
     url: "/",
-    siteName: "FurniNest",
-    title: "FurniNest — Modern Furniture for Every Home",
+    siteName: "LUXA FURNITURE",
+    title: "LUXA FURNITURE — Premium Furniture for Every UK Home",
     description:
-      "Shop premium sofas, beds, tables and decor at FurniNest. Fast delivery, quality craftsmanship.",
+      "Shop premium sofas, chairs, tables and furniture sets at LUXA FURNITURE. Quality craftsmanship, UK delivery.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "FurniNest — Modern Furniture for Every Home",
+    title: "LUXA FURNITURE — Premium Furniture for Every UK Home",
     description:
-      "Shop premium sofas, beds, tables and decor at FurniNest.",
-    creator: "@FurniNest",
+      "Shop premium sofas, chairs, tables and furniture sets at LUXA FURNITURE.",
+    creator: "@LuxaFurniture",
   },
   robots: {
     index: true,

@@ -10,9 +10,9 @@ interface CartStore {
   hasLoaded: boolean;
 
   fetchCart: () => Promise<void>;
-  addItem: (productId: string, quantity?: number) => Promise<void>;
-  updateItem: (productId: string, quantity: number) => Promise<void>;
-  removeItem: (productId: string) => Promise<void>;
+  addItem: (productId: string, quantity?: number, variantId?: string) => Promise<void>;
+  updateItem: (productId: string, quantity: number, variantId?: string) => Promise<void>;
+  removeItem: (productId: string, variantId?: string) => Promise<void>;
   clearCart: () => Promise<void>;
   reset: () => void;
 }
@@ -35,10 +35,10 @@ export const useCartStore = create<CartStore>((set, get) => ({
     }
   },
 
-  addItem: async (productId, quantity = 1) => {
+  addItem: async (productId, quantity = 1, variantId?) => {
     set({ error: null });
     try {
-      await cartService.addItem(productId, quantity);
+      await cartService.addItem(productId, quantity, variantId);
       await get().fetchCart();
     } catch (error) {
       set({ error: getApiErrorMessage(error) });
@@ -46,11 +46,11 @@ export const useCartStore = create<CartStore>((set, get) => ({
     }
   },
 
-  updateItem: async (productId, quantity) => {
+  updateItem: async (productId, quantity, variantId?) => {
     set({ error: null });
     const previous = get().cart;
     try {
-      await cartService.updateItem(productId, quantity);
+      await cartService.updateItem(productId, quantity, variantId);
       await get().fetchCart();
     } catch (error) {
       set({ error: getApiErrorMessage(error), cart: previous });
@@ -58,10 +58,10 @@ export const useCartStore = create<CartStore>((set, get) => ({
     }
   },
 
-  removeItem: async (productId) => {
+  removeItem: async (productId, variantId?) => {
     set({ error: null });
     try {
-      await cartService.removeItem(productId);
+      await cartService.removeItem(productId, variantId);
       await get().fetchCart();
     } catch (error) {
       set({ error: getApiErrorMessage(error) });

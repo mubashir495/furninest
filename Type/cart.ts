@@ -16,6 +16,10 @@ export interface CartItem {
   quantity: number;
   price: number; // unit price snapshot (finalPrice at time of add)
   subtotal: number; // virtual: price * quantity
+  variantId?: string;
+  variantName?: string;
+  selectedColor?: string;
+  selectedConfig?: string;
   created_date: string;
   updated_date: string;
 }

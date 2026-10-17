@@ -11,13 +11,13 @@ import { ProductCarousel } from '@/components/products/ProductCarousel';
 export const revalidate = 300; // ISR: catalog rebuilds at most every 5 minutes
 
 export const metadata: Metadata = {
-  title: 'FurniNest — Modern Furniture for Every Home',
+  title: 'LUXA FURNITURE — Premium Furniture for Every UK Home',
   description:
-    'Shop premium sofas, beds, tables and decor at FurniNest. Fast delivery, quality craftsmanship.',
+    'Shop premium sofas, chairs, tables and furniture sets at LUXA FURNITURE. Quality craftsmanship, UK delivery.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'FurniNest — Modern Furniture for Every Home',
-    description: 'Shop premium sofas, beds, tables and decor at FurniNest.',
+    title: 'LUXA FURNITURE — Premium Furniture for Every UK Home',
+    description: 'Shop premium sofas, chairs, tables and furniture sets at LUXA FURNITURE.',
     type: 'website',
     url: '/',
   },

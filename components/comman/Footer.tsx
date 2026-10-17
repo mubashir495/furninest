@@ -26,7 +26,7 @@ export function Footer() {
         {/* Top Section */}
         <div className="flex flex-col lg:flex-row items-center justify-between mb-16 gap-8 bg-gray-100 dark:bg-gray-800/50 rounded-3xl p-8 lg:p-12 border border-gray-200 dark:border-gray-700 transition-colors">
           <div className="text-center lg:text-left max-w-lg">
-            <h3 className="font-serif text-3xl font-bold tracking-widest uppercase mb-4 text-primary">Luxe</h3>
+            <h3 className="font-serif text-3xl font-bold tracking-widest uppercase mb-4 text-primary">LUXA FURNITURE</h3>
             <p className="text-muted-foreground text-sm leading-relaxed">
               Curated luxury furniture for the design-conscious home. Heirloom-quality pieces crafted to last a lifetime.
             </p>
@@ -82,7 +82,7 @@ export function Footer() {
         {/* 4 Columns */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           <div>
-            <h4 className="font-serif text-xl mb-6 text-primary font-medium">About Luxe</h4>
+            <h4 className="font-serif text-xl mb-6 text-primary font-medium">About LUXA</h4>
             <ul className="space-y-4 text-sm text-muted-foreground">
               <li><Link href="/about" className="hover:text-primary transition-colors">Our Story</Link></li>
               <li><Link href="/about" className="hover:text-primary transition-colors">Craftsmanship</Link></li>
@@ -124,7 +124,7 @@ export function Footer() {
               </li>
               <li className="flex items-center gap-3">
                 <Mail size={18} className="text-primary shrink-0" />
-                <span>contact@luxe-furniture.co.uk</span>
+                <span>contact@luxafurniture.co.uk</span>
               </li>
             </ul>
             <div className="flex gap-4 mt-8">
@@ -137,7 +137,7 @@ export function Footer() {
 
         {/* Bottom */}
         <div className="pt-8 border-t border-gray-200 dark:border-gray-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} Luxe Furniture Ltd. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} LUXA FURNITURE Ltd. All rights reserved.</p>
           <div className="flex items-center gap-4 text-muted-foreground/60">
             <span>Visa</span>
             <span>Mastercard</span>

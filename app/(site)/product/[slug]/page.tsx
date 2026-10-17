@@ -10,12 +10,8 @@ import { ProductCarousel } from '@/components/products/ProductCarousel';
 import Link from 'next/link';
 import { formatCurrency } from '@/utils/validators';
 
-export const revalidate = 60;
-
-export async function generateStaticParams(): Promise<{ slug: string }[]> {
-  const slugs = await getAllProductSlugs({ limit: 200 });
-  return slugs.map((slug: string) => ({ slug }));
-}
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -26,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const description = (product.shortDescription ?? product.longDescription ?? '').slice(0, 155);
   return {
-    title: `${product.name} | FurniNest`,
+    title: `${product.name} | LUXA FURNITURE`,
     description,
     alternates: { canonical: `/product/${slug}` },
     openGraph: {
@@ -58,7 +54,7 @@ export default async function ProductDetailPage({ params }: Props) {
       priceCurrency: 'GBP',
       price: product.finalPrice,
       availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-      url: `https://furninest.example.com/product/${slug}`,
+      url: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://luxafurniture.co.uk'}/product/${slug}`,
     },
   };
 

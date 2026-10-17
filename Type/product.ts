@@ -1,5 +1,22 @@
 import { Category, SubCategory } from './category';
 
+export interface ProductVariant {
+  _id: string;
+  configName: string;
+  colorName?: string;
+  colorHex?: string;
+  sku?: string;
+  price: number;
+  salePrice?: number;
+  stock: number;
+  images: string[];
+  isActive: boolean;
+  dimensions?: string;
+  material?: string;
+  weight?: number;
+  attributes?: Record<string, string>;
+}
+
 export interface Product {
   _id: string;
   name: string;
@@ -22,6 +39,7 @@ export interface Product {
   size?: string[];
   sku?: string;
   brand?: string;
+  variants?: ProductVariant[];
 }
 
 export interface ProductDetail extends Product {
@@ -86,4 +104,29 @@ export function suggestionToProduct(s: ProductSuggestion): Product {
     updated_date: '',
   };
 
+}
+
+export function getVariantFinalPrice(variant: ProductVariant): number {
+  if (variant.salePrice !== undefined && variant.salePrice < variant.price) {
+    return variant.salePrice;
+  }
+  return variant.price;
+}
+
+export function getAvailableConfigs(variants: ProductVariant[]): string[] {
+  return [...new Set(variants.filter(v => v.isActive).map(v => v.configName))];
+}
+
+export function getAvailableColors(variants: ProductVariant[], configName?: string): ProductVariant[] {
+  const filtered = variants.filter(v => v.isActive && v.colorName);
+  if (configName) return filtered.filter(v => v.configName === configName);
+  return filtered;
+}
+
+export function findVariant(variants: ProductVariant[], configName: string, colorName?: string): ProductVariant | undefined {
+  return variants.find(v =>
+    v.isActive &&
+    v.configName === configName &&
+    (colorName === undefined || !v.colorName || v.colorName === colorName)
+  );
 }

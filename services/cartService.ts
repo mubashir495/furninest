@@ -11,25 +11,25 @@ export const cartService = {
     }
   },
 
-  async addItem(productId: string, quantity = 1): Promise<void> {
+  async addItem(productId: string, quantity = 1, variantId?: string): Promise<void> {
     try {
-      await api.post('/cart/items', { productId, quantity });
+      await api.post('/cart/items', { productId, quantity, ...(variantId && { variantId }) });
     } catch (error) {
       throw new Error(getApiErrorMessage(error, 'Could not add item to cart.'));
     }
   },
 
-  async updateItem(productId: string, quantity: number): Promise<void> {
+  async updateItem(productId: string, quantity: number, variantId?: string): Promise<void> {
     try {
-      await api.patch(`/cart/items/${productId}`, { quantity });
+      await api.patch(`/cart/items/${productId}`, { quantity, ...(variantId && { variantId }) });
     } catch (error) {
       throw new Error(getApiErrorMessage(error, 'Could not update quantity.'));
     }
   },
 
-  async removeItem(productId: string): Promise<void> {
+  async removeItem(productId: string, variantId?: string): Promise<void> {
     try {
-      await api.delete(`/cart/items/${productId}`);
+      await api.delete(`/cart/items/${productId}`, { data: variantId ? { variantId } : undefined });
     } catch (error) {
       throw new Error(getApiErrorMessage(error, 'Could not remove item.'));
     }
