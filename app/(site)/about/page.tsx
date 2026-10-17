@@ -5,12 +5,12 @@ import { Hammer, Leaf, HeartHandshake, Sparkles } from 'lucide-react';
 import { TrustBadges } from '@/components/comman/TrustBadges';
 
 export const metadata: Metadata = {
-  title: 'About Us | FurniNest',
+  title: 'About Us | LUXA FURNITURE',
   description:
-    'FurniNest crafts modern furniture for every home — quality materials, honest pricing, and pieces built to last.',
+    'LUXA FURNITURE crafts modern furniture for every home — quality materials, honest pricing, and pieces built to last.',
   alternates: { canonical: '/about' },
   openGraph: {
-    title: 'About FurniNest',
+    title: 'About LUXA FURNITURE',
     description: 'Quality furniture, honest craftsmanship, made for real homes.',
     type: 'website',
     url: '/about',
@@ -67,7 +67,7 @@ export default function AboutPage() {
             Furniture Made for Real Life
           </h1>
           <p className="text-lg md:text-xl text-white/80 max-w-xl font-light">
-            We believe good furniture shouldn&apos;t be a compromise between beauty and durability. FurniNest exists to close that gap.
+            We believe good furniture shouldn&apos;t be a compromise between beauty and durability. LUXA FURNITURE exists to close that gap.
           </p>
         </div>
       </section>
@@ -102,11 +102,11 @@ export default function AboutPage() {
               From One Workshop to Thousands of Homes
             </h2>
             <p className="text-muted-foreground text-lg leading-relaxed mb-6">
-              FurniNest began with a simple frustration: too much furniture is either beautifully designed and
+              LUXA FURNITURE began with a simple frustration: too much furniture is either beautifully designed and
               poorly made, or well made and forgettable. We set out to find makers who refused that trade-off.
             </p>
             <p className="text-muted-foreground text-lg leading-relaxed mb-10">
-              Today, every piece on FurniNest is chosen for the same reason the first one was — it has to earn
+              Today, every piece on LUXA FURNITURE is chosen for the same reason the first one was — it has to earn
               its place in your home, not just your cart.
             </p>
             <Link

@@ -38,7 +38,7 @@ export default function LoginPage() {
   return (
     <AuthShell
       eyebrow="Welcome back"
-      title="Log in to FurniNest"
+      title="Log in to LUXA"
       subtitle="Enter your details to access your account."
       footer={
         <>

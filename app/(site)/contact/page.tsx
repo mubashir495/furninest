@@ -4,13 +4,13 @@ import { ContactForm } from '@/components/contact/ContactForm';
 import { BsWhatsapp } from 'react-icons/bs';
 
 export const metadata: Metadata = {
-  title: 'Contact Us | FurniNest',
-  description: 'Have a question about an order, a product, or anything else? Get in touch with the FurniNest team.',
+  title: 'Contact Us | LUXA FURNITURE',
+  description: 'Have a question about an order, a product, or anything else? Get in touch with the LUXA FURNITURE team.',
   alternates: { canonical: '/contact' },
 };
 
 const CONTACT_INFO = [
-  { icon: Mail, label: 'Email', value: 'support@furninest.com' },
+  { icon: Mail, label: 'Email', value: 'support@luxafurniture.com' },
   { icon: BsWhatsapp, label: `what'sapp`, value: '+447398178902' },
   { icon: MapPin, label: 'Address', value: '85 Great Portland Street, London, W1W 7LT, United Kingdom' },
   { icon: Clock, label: 'Hours', value: 'Mon–Sat, 9am–7pm' },

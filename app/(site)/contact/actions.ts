@@ -51,14 +51,14 @@ export async function submitContactForm(
 
     await sendMail({
       to: email,
-      subject: 'We received your message — FurniNest',
+      subject: 'We received your message — LUXA FURNITURE',
       html: `
         <h2>Thanks for reaching out, ${escapeHtml(name)}!</h2>
         <p>We've received your message and will get back to you within 1-2 business days.</p>
         <blockquote style="border-left:3px solid #C9A66B;padding-left:12px;color:#555;">
           ${escapeHtml(message).replace(/\n/g, '<br/>')}
         </blockquote>
-        <p>— The FurniNest Team</p>
+        <p>— The LUXA FURNITURE Team</p>
       `,
     });
 

@@ -24,7 +24,7 @@ function getTransporter() {
 export async function sendMail(options: { to: string; replyTo?: string; subject: string; html: string }) {
   const transport = getTransporter();
   await transport.sendMail({
-    from: `"FurniNest" <${process.env.MAIL_USER}>`,
+    from: `"LUXA FURNITURE" <${process.env.MAIL_USER}>`,
     to: options.to,
     replyTo: options.replyTo,
     subject: options.subject,

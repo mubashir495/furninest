@@ -122,7 +122,7 @@ export default function SignupPage() {
 
   return (
     <AuthShell
-      eyebrow="Join FurniNest"
+      eyebrow="Join LUXA"
       title="Create your account"
       subtitle="Start furnishing your space with pieces built to last."
       footer={

@@ -61,7 +61,7 @@ export default function AdminLayout({
             </button>
 
             <h2 className="font-semibold">
-              FurniNest Admin
+              LUXA Admin
             </h2>
 
           </header>

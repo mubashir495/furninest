@@ -86,7 +86,7 @@ export default function AdminDashboardPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-[#2B2420] mb-1">Dashboard</h1>
-        <p className="text-sm text-[#8B7B6F]">Welcome back to the FurniNest admin panel.</p>
+        <p className="text-sm text-[#8B7B6F]">Welcome back to the LUXA admin panel.</p>
       </div>
 
       {/* Orders overview */}
