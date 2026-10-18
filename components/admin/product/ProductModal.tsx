@@ -1,11 +1,14 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X, Save, Loader2, ImagePlus } from 'lucide-react';
+import { X, Save, Loader2, ImagePlus, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { colors } from '@/config/colors';
 import { Product, ProductFormData, Category, SubCategory } from '@/Type/products';
+import { ProductVariant } from '@/Type/product';
+import { productService } from '@/services/productService';
 import ProductImageUpload from './ProductImageUpload';
 import { useCategories, useSubCategories, useAllProducts } from '@/hooks/useProducts';
+
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -222,6 +225,20 @@ export default function ProductModal({
   const [colorInput, setColorInput] = useState('');
   const [sizeInput, setSizeInput] = useState('');
 
+  // ── Variant management state ─────────────────────────────────────────────
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [variantSection, setVariantSection] = useState(false); // collapsed by default
+  const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
+  const [variantLoading, setVariantLoading] = useState(false);
+  const [variantError, setVariantError] = useState('');
+  const [variantImageFiles, setVariantImageFiles] = useState<File[]>([]);
+  const blankVariantForm = {
+    configName: '', colorName: '', colorHex: '#D4A373',
+    sku: '', price: '', salePrice: '', stock: '0',
+    dimensions: '', material: '', isActive: true,
+  };
+  const [variantForm, setVariantForm] = useState(blankVariantForm);
+
   const { categories, loading: categoriesLoading } = useCategories();
   const { subCategories, loading: subCategoriesLoading } = useSubCategories(selectedCategory);
   const { products: suggestionCandidates, loading: suggestionsLoading } = useAllProducts(initialData?._id);
@@ -260,6 +277,11 @@ export default function ProductModal({
       setThumbnailFile(null);
       setThumbnailPreview('');
       setExistingThumbnail(initialData.thumbnailImage || '');
+      // Sync variants
+      setVariants((initialData.variants as ProductVariant[] | undefined) ?? []);
+      setVariantForm(blankVariantForm);
+      setEditingVariantId(null);
+      setVariantError('');
     } else {
       setSelectedCategory('');
       setImageFiles([]);
@@ -270,6 +292,10 @@ export default function ProductModal({
       setThumbnailFile(null);
       setThumbnailPreview('');
       setExistingThumbnail('');
+      setVariants([]);
+      setVariantForm(blankVariantForm);
+      setEditingVariantId(null);
+      setVariantError('');
       setFormData({
         name: '',
         shortDescription: '',
@@ -837,6 +863,197 @@ export default function ProductModal({
                 )}
               </div>
             </div>
+
+            {/* ── Variants Section (edit mode only — requires saved product _id) ── */}
+            {initialData?._id && (
+              <div style={{ ...modalStyles.formGroup, border: `1px solid ${colors.border}`, borderRadius: '10px', padding: '16px', marginTop: '8px' }}>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' as const }}
+                  onClick={() => setVariantSection(v => !v)}
+                >
+                  <label style={{ ...modalStyles.label, margin: 0, cursor: 'pointer' }}>
+                    Variants ({variants.length})
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', color: colors.text.muted }}>Configs, colours &amp; pricing</span>
+                    {variantSection ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </div>
+                </div>
+
+                {variantSection && (
+                  <div style={{ marginTop: '16px' }}>
+                    {variantError && <p style={{ ...modalStyles.error, marginBottom: '12px' }}>{variantError}</p>}
+
+                    {/* Existing variants */}
+                    {variants.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                        {variants.map(v => (
+                          <div
+                            key={v._id}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '12px',
+                              padding: '10px 14px', borderRadius: '8px',
+                              border: `1px solid ${colors.border}`,
+                              background: v.isActive ? colors.surface : '#f3f4f6',
+                              opacity: v.isActive ? 1 : 0.6,
+                            }}
+                          >
+                            {v.colorHex && (
+                              <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: v.colorHex, border: '1px solid #ccc', flexShrink: 0 }} />
+                            )}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 600, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {v.configName}{v.colorName ? ` — ${v.colorName}` : ''}
+                              </div>
+                              <div style={{ fontSize: '12px', color: colors.text.muted, marginTop: '2px' }}>
+                                £{v.salePrice != null ? v.salePrice : v.price}
+                                {v.salePrice != null && <span style={{ marginLeft: '6px', textDecoration: 'line-through', color: '#bbb' }}>£{v.price}</span>}
+                                {' · '}{v.stock} stock{v.sku ? ` · ${v.sku}` : ''}{v.images?.length ? ` · ${v.images.length} img` : ''}
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingVariantId(v._id);
+                                  setVariantForm({ configName: v.configName, colorName: v.colorName ?? '', colorHex: v.colorHex ?? '#D4A373', sku: v.sku ?? '', price: String(v.price), salePrice: v.salePrice != null ? String(v.salePrice) : '', stock: String(v.stock), dimensions: v.dimensions ?? '', material: v.material ?? '', isActive: v.isActive });
+                                  setVariantImageFiles([]); setVariantError('');
+                                }}
+                                style={{ padding: '4px 10px', fontSize: '12px', borderRadius: '6px', border: `1px solid ${colors.border}`, background: '#fff', cursor: 'pointer' }}
+                              >Edit</button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  if (!confirm(`Delete "${v.configName}"?`)) return;
+                                  setVariantLoading(true); setVariantError('');
+                                  try {
+                                    await productService.deleteVariant(initialData._id, v._id);
+                                    setVariants(prev => prev.filter(x => x._id !== v._id));
+                                  } catch (e: any) { setVariantError(e.message); }
+                                  finally { setVariantLoading(false); }
+                                }}
+                                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                              ><Trash2 size={13} /></button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add / Edit form */}
+                    <div style={{ border: `1px dashed ${colors.border}`, borderRadius: '8px', padding: '16px', background: '#fafafa' }}>
+                      <p style={{ fontWeight: 600, fontSize: '13px', marginBottom: '12px' }}>
+                        {editingVariantId ? '✏️ Edit Variant' : '➕ Add New Variant'}
+                      </p>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                        <div>
+                          <label style={modalStyles.label}>Configuration *</label>
+                          <input type="text" placeholder="e.g. 3-Seater" value={variantForm.configName} onChange={e => setVariantForm(f => ({ ...f, configName: e.target.value }))} style={modalStyles.input} />
+                        </div>
+                        <div>
+                          <label style={modalStyles.label}>Colour Name</label>
+                          <input type="text" placeholder="e.g. Beige" value={variantForm.colorName} onChange={e => setVariantForm(f => ({ ...f, colorName: e.target.value }))} style={modalStyles.input} />
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
+                          <div style={{ flex: 1 }}>
+                            <label style={modalStyles.label}>Colour Hex</label>
+                            <input type="text" placeholder="#D4A373" value={variantForm.colorHex} onChange={e => setVariantForm(f => ({ ...f, colorHex: e.target.value }))} style={modalStyles.input} />
+                          </div>
+                          <div style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid #ccc', background: variantForm.colorHex, flexShrink: 0, marginBottom: '2px' }} />
+                        </div>
+                        <div>
+                          <label style={modalStyles.label}>SKU</label>
+                          <input type="text" placeholder="e.g. SOFA-3S-BEI" value={variantForm.sku} onChange={e => setVariantForm(f => ({ ...f, sku: e.target.value }))} style={modalStyles.input} />
+                        </div>
+                        <div>
+                          <label style={modalStyles.label}>Price (£) *</label>
+                          <input type="number" min="0" step="0.01" placeholder="0.00" value={variantForm.price} onChange={e => setVariantForm(f => ({ ...f, price: e.target.value }))} style={modalStyles.input} />
+                        </div>
+                        <div>
+                          <label style={modalStyles.label}>Sale Price (£)</label>
+                          <input type="number" min="0" step="0.01" placeholder="Leave blank if no sale" value={variantForm.salePrice} onChange={e => setVariantForm(f => ({ ...f, salePrice: e.target.value }))} style={modalStyles.input} />
+                        </div>
+                        <div>
+                          <label style={modalStyles.label}>Stock</label>
+                          <input type="number" min="0" value={variantForm.stock} onChange={e => setVariantForm(f => ({ ...f, stock: e.target.value }))} style={modalStyles.input} />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingTop: '22px' }}>
+                          <input type="checkbox" id="variantActiveChk" checked={variantForm.isActive} onChange={e => setVariantForm(f => ({ ...f, isActive: e.target.checked }))} />
+                          <label htmlFor="variantActiveChk" style={{ fontSize: '13px', cursor: 'pointer' }}>Active</label>
+                        </div>
+                        <div>
+                          <label style={modalStyles.label}>Dimensions</label>
+                          <input type="text" placeholder='W220 × D90 × H85 cm' value={variantForm.dimensions} onChange={e => setVariantForm(f => ({ ...f, dimensions: e.target.value }))} style={modalStyles.input} />
+                        </div>
+                        <div>
+                          <label style={modalStyles.label}>Material</label>
+                          <input type="text" placeholder="e.g. Velvet, Linen" value={variantForm.material} onChange={e => setVariantForm(f => ({ ...f, material: e.target.value }))} style={modalStyles.input} />
+                        </div>
+                      </div>
+
+                      {/* Variant image upload */}
+                      <div style={{ marginTop: '12px' }}>
+                        <label style={modalStyles.label}>Variant Images</label>
+                        <input type="file" accept="image/*" multiple onChange={e => setVariantImageFiles(Array.from(e.target.files ?? []))} style={{ fontSize: '13px' }} />
+                        {variantImageFiles.length > 0 && <p style={{ fontSize: '12px', color: colors.text.muted, marginTop: '4px' }}>{variantImageFiles.length} image(s) selected</p>}
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                        <button
+                          type="button"
+                          disabled={variantLoading || !variantForm.configName.trim() || !variantForm.price}
+                          onClick={async () => {
+                            if (!variantForm.configName.trim() || !variantForm.price) { setVariantError('Configuration name and price are required.'); return; }
+                            setVariantLoading(true); setVariantError('');
+                            try {
+                              const payload: Record<string, unknown> = {
+                                configName: variantForm.configName.trim(),
+                                price: Number(variantForm.price),
+                                stock: Number(variantForm.stock),
+                                isActive: variantForm.isActive,
+                                ...(variantForm.colorName && { colorName: variantForm.colorName }),
+                                ...(variantForm.colorHex && { colorHex: variantForm.colorHex }),
+                                ...(variantForm.sku && { sku: variantForm.sku }),
+                                ...(variantForm.salePrice && { salePrice: Number(variantForm.salePrice) }),
+                                ...(variantForm.dimensions && { dimensions: variantForm.dimensions }),
+                                ...(variantForm.material && { material: variantForm.material }),
+                              };
+                              if (editingVariantId) {
+                                const res: any = await productService.updateVariant(initialData._id, editingVariantId, payload);
+                                if (variantImageFiles.length > 0) await productService.uploadVariantImages(initialData._id, editingVariantId, variantImageFiles);
+                                const updatedVariants: ProductVariant[] = res?.data?.variants ?? [];
+                                setVariants(updatedVariants.length ? updatedVariants : prev => prev.map(v => v._id === editingVariantId ? { ...v, ...payload } as ProductVariant : v));
+                                setEditingVariantId(null);
+                              } else {
+                                const form = new FormData();
+                                Object.entries(payload).forEach(([k, val]) => form.append(k, String(val)));
+                                variantImageFiles.forEach(f => form.append('images', f));
+                                const res: any = await productService.addVariant(initialData._id, form);
+                                const newVariants: ProductVariant[] = res?.data?.variants ?? [];
+                                setVariants(newVariants.length ? newVariants : prev => [...prev]);
+                              }
+                              setVariantForm(blankVariantForm); setVariantImageFiles([]);
+                            } catch (e: any) { setVariantError(e.message); }
+                            finally { setVariantLoading(false); }
+                          }}
+                          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, borderRadius: '8px', border: 'none', cursor: 'pointer', background: colors.primary[500], color: '#fff', opacity: variantLoading ? 0.6 : 1 }}
+                        >
+                          {variantLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={14} />}
+                          {editingVariantId ? 'Save Changes' : 'Add Variant'}
+                        </button>
+                        {editingVariantId && (
+                          <button
+                            type="button"
+                            onClick={() => { setEditingVariantId(null); setVariantForm(blankVariantForm); setVariantImageFiles([]); setVariantError(''); }}
+                            style={{ padding: '8px 14px', fontSize: '13px', borderRadius: '8px', border: `1px solid ${colors.border}`, background: '#fff', cursor: 'pointer' }}
+                          >Cancel Edit</button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Footer */}
             <div style={modalStyles.footer}>

@@ -25,7 +25,16 @@ export const metadata: Metadata = {
   },
   description:
     "Shop premium sofas, chairs, tables and furniture sets at LUXA FURNITURE. Quality craftsmanship, UK delivery.",
-  keywords: ["LUXA FURNITURE", "UK furniture", "luxury sofas UK", "furniture", "sofa", "bed", "table", "home decor"],
+  keywords: [
+    "LUXA FURNITURE",
+    "luxury furniture UK",
+    "premium sofas UK",
+    "furniture store UK",
+    "sofa",
+    "bed",
+    "dining table",
+    "home decor",
+  ],
   authors: [{ name: "LUXA FURNITURE" }],
   creator: "LUXA FURNITURE",
   openGraph: {
@@ -64,7 +73,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="en-GB"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >

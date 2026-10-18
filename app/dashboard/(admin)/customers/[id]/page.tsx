@@ -21,7 +21,8 @@ export default function CustomerDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const customerId = params?.id ?? '';
+  const rawId = params?.id ?? '';
+  const customerId = Array.isArray(rawId) ? rawId[0] : rawId;
 
   useEffect(() => {
     async function load() {
@@ -44,8 +45,10 @@ export default function CustomerDetailPage() {
           return order.user._id === customerId || order.user._id === foundCustomer._id;
         });
 
-        setOrders(matchingOrders);
+        // AdminOrder is a superset of Order — safe to cast
+        setOrders(matchingOrders as unknown as Order[]);
       } catch (err) {
+
         setError(err instanceof Error ? err.message : 'Could not load customer details.');
       } finally {
         setIsLoading(false);

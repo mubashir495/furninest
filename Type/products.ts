@@ -48,6 +48,9 @@ export interface Product {
   featured?: boolean;
   status?: "active" | "inactive";
 
+  /** Variant sub-documents (populated on full product fetch) */
+  variants?: import('./product').ProductVariant[];
+
   createdAt?: string;
   updatedAt?: string;
 }

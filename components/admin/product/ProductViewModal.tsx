@@ -29,7 +29,8 @@ export default function ProductViewModal({
       : { bg: colors.error[50], text: colors.error[700] };
   };
 
-  const statusColors = getStatusColor(product.status);
+  const statusColors = getStatusColor(product.status ?? 'inactive');
+
   const categoryName = typeof product.category === 'object' ? product.category.name : product.category;
   const subCategoryName = typeof product.subCategory === 'object' ? product.subCategory.name : product.subCategory;
 
@@ -324,19 +325,21 @@ export default function ProductViewModal({
               backgroundColor: statusColors.bg,
               color: statusColors.text,
             }}>
-              {product.status.charAt(0).toUpperCase() + product.status.slice(1)}
+              {(product.status ?? 'inactive').charAt(0).toUpperCase() + (product.status ?? 'inactive').slice(1)}
+
             </span>
           </div>
 
           <div style={styles.detail}>
             <span style={styles.detailLabel}>Created</span>
-            <span style={styles.detailValue}>{formatDate(product.createdAt)}</span>
+            <span style={styles.detailValue}>{product.createdAt ? formatDate(product.createdAt) : '—'}</span>
           </div>
 
           <div style={styles.detail}>
             <span style={styles.detailLabel}>Updated</span>
-            <span style={styles.detailValue}>{formatDate(product.updatedAt)}</span>
+            <span style={styles.detailValue}>{product.updatedAt ? formatDate(product.updatedAt) : '—'}</span>
           </div>
+
 
           {product.shortDescription && (
             <div style={styles.description}>

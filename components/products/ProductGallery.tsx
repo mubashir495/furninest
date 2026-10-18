@@ -1,18 +1,29 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 
 export function ProductGallery({
   images,
   productName,
   discount,
+  activeImages,
 }: {
   images: string[];
   productName: string;
   discount: number;
+  /** When provided (and non-empty), display these images instead of `images`. Used for variant gallery sync. */
+  activeImages?: string[];
 }) {
   const [currentImage, setCurrentImage] = useState(0);
-  const gallery = images.length > 0 ? images : ['/window.svg'];
+
+  // Reset to first image whenever the active variant gallery changes
+  useEffect(() => {
+    setCurrentImage(0);
+  }, [activeImages]);
+
+  // Use activeImages (variant-specific) when provided, otherwise fall back to base product images
+  const gallery = (activeImages && activeImages.length > 0 ? activeImages : images.length > 0 ? images : ['/window.svg']);
+
 
   return (
     <div className="w-full lg:w-1/2 flex flex-col gap-4">

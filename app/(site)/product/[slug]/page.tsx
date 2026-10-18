@@ -1,14 +1,11 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { getProductBySlug, getAllProductSlugs } from '@/lib/data/products';
+import { getProductBySlug } from '@/lib/data/products';
 import { getCategoryName, suggestionToProduct } from '@/Type/product';
-import { ProductGallery } from '@/components/products/ProductGallery';
-import { ProductInfoCard } from '@/components/products/ProductInfoCard';
-import { AddToCartPanel } from '@/components/products/AddToCartPanel';
+import { ProductDetailClient } from '@/components/products/ProductDetailClient';
 import { ProductTabs } from '@/components/products/ProductTabs';
 import { ProductCarousel } from '@/components/products/ProductCarousel';
 import Link from 'next/link';
-import { formatCurrency } from '@/utils/validators';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -17,7 +14,7 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getProductBySlug(slug); // de-duped by React `cache()`
+  const product = await getProductBySlug(slug);
   if (!product) return { title: 'Product not found' };
 
   const description = (product.shortDescription ?? product.longDescription ?? '').slice(0, 155);
@@ -40,20 +37,36 @@ export default async function ProductDetailPage({ params }: Props) {
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const gallery = product.images.length > 0 ? product.images : [product.thumbnailImage].filter(Boolean);
+  const baseGallery =
+    product.images.length > 0 ? product.images : [product.thumbnailImage].filter(Boolean) as string[];
   const categoryName = getCategoryName(product);
+
+  // JSON-LD: use the first available variant price if variants exist, otherwise finalPrice
+  const seoPrice =
+    product.variants && product.variants.length > 0
+      ? (product.variants.find((v) => v.isActive)?.salePrice ??
+         product.variants.find((v) => v.isActive)?.price ??
+         product.finalPrice)
+      : product.finalPrice;
+
+  const seoInStock =
+    product.variants && product.variants.length > 0
+      ? product.variants.some((v) => v.isActive && v.stock > 0)
+      : product.stock > 0;
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.name,
-    image: gallery,
+    image: baseGallery,
     description: product.shortDescription,
     offers: {
       '@type': 'Offer',
       priceCurrency: 'GBP',
-      price: product.finalPrice,
-      availability: product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      price: seoPrice,
+      availability: seoInStock
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
       url: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://luxafurniture.co.uk'}/product/${slug}`,
     },
   };
@@ -62,7 +75,9 @@ export default async function ProductDetailPage({ params }: Props) {
     <div className="pt-4 pb-24">
       {/* eslint-disable-next-line react/no-danger */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+
       <div className="container mx-auto px-6">
+        {/* Breadcrumb */}
         <nav aria-label="Breadcrumb" className="text-sm mb-8">
           <Link href="/">Home</Link> / <Link href="/shop">Shop</Link>
           {categoryName && (
@@ -73,21 +88,24 @@ export default async function ProductDetailPage({ params }: Props) {
           )}
         </nav>
 
-        <div className="flex flex-col lg:flex-row gap-16 mb-24">
-          <ProductGallery images={gallery} productName={product.name} discount={product.discount} />
-          <div className="w-full lg:w-1/2">
-            <h1 className="text-4xl md:text-5xl font-serif text-primary mb-4">{product.name}</h1>
-            {/* static price/stock markup rendered on the server — good for SEO/rich snippets */}
-            <p className="text-4xl font-bold text-primary mb-8">{formatCurrency(product.finalPrice)}</p>
-            <ProductInfoCard product={product} />
-            <AddToCartPanel product={product} />
-          </div>
-        </div>
+        {/*
+          ProductDetailClient is the client island.
+          It owns: variant selection state, gallery/price sync, and the Add-to-Cart button.
+          Server-rendered portions (JSON-LD, breadcrumb, tabs, carousel) remain above/below.
+        */}
+        <ProductDetailClient product={product} baseGallery={baseGallery} />
 
-        <ProductTabs description={product.longDescription ?? product.shortDescription} categoryName={categoryName} stock={product.stock} />
+        <ProductTabs
+          description={product.longDescription ?? product.shortDescription}
+          categoryName={categoryName}
+          stock={product.stock}
+        />
 
         {product.suggestions?.length > 0 && (
-          <ProductCarousel products={product.suggestions.map(suggestionToProduct)} title="You May Also Like" />
+          <ProductCarousel
+            products={product.suggestions.map(suggestionToProduct)}
+            title="You May Also Like"
+          />
         )}
       </div>
     </div>

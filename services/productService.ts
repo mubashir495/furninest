@@ -112,4 +112,47 @@ export const productService = {
 
     return result;
   },
+
+  // ── Variant CRUD (admin only) ──────────────────────────────────────────────
+
+  async addVariant(productId: string, data: FormData): Promise<unknown> {
+    try {
+      const { data: res } = await api.post(`/products/${productId}/variants`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Could not add variant.'));
+    }
+  },
+
+  async updateVariant(productId: string, variantId: string, data: Record<string, unknown>): Promise<unknown> {
+    try {
+      const { data: res } = await api.patch(`/products/${productId}/variants/${variantId}`, data);
+      return res;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Could not update variant.'));
+    }
+  },
+
+  async deleteVariant(productId: string, variantId: string): Promise<void> {
+    try {
+      await api.delete(`/products/${productId}/variants/${variantId}`);
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Could not delete variant.'));
+    }
+  },
+
+  async uploadVariantImages(productId: string, variantId: string, images: File[]): Promise<unknown> {
+    try {
+      const form = new FormData();
+      images.forEach((f) => form.append('images', f));
+      const { data: res } = await api.post(`/products/${productId}/variants/${variantId}/images`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return res;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Could not upload variant images.'));
+    }
+  },
 };

@@ -9,7 +9,19 @@ import { useAuth } from '@/context/AuthContext';
 import { QuantitySelector } from '@/components/ui/QuantitySelector';
 import { ProductDetail } from '@/Type/product';
 
-export function AddToCartPanel({ product }: { product: ProductDetail }) {
+interface AddToCartPanelProps {
+  product: ProductDetail;
+  /**
+   * When the product has variants, pass the selected variant's `_id` here.
+   * If the product has variants but none is selected yet, the button will be
+   * disabled with a "Please select a configuration" message.
+   */
+  selectedVariantId?: string;
+  /** Stock for the selected variant (overrides product-level stock when provided). */
+  variantStock?: number;
+}
+
+export function AddToCartPanel({ product, selectedVariantId, variantStock }: AddToCartPanelProps) {
   const [quantity, setQuantity] = useState(1);
   const [isAdding, setIsAdding] = useState(false);
   const { isAuthenticated } = useAuth();
@@ -18,12 +30,33 @@ export function AddToCartPanel({ product }: { product: ProductDetail }) {
   const toggleWishlist = useWishlistStore((s) => s.toggle);
   const isWishlisted = useWishlistStore((s) => s.isInWishlist(product._id));
 
+  const hasVariants = (product.variants?.length ?? 0) > 0;
+
+  // Effective stock: prefer variant stock when available, fall back to product-level stock
+  const effectiveStock = variantStock !== undefined ? variantStock : product.stock;
+
+  // Button disabled states
+  const needsVariantSelection = hasVariants && !selectedVariantId;
+  const outOfStock = effectiveStock === 0 && !needsVariantSelection;
+  const isDisabled = needsVariantSelection || outOfStock || isAdding;
+
+  const buttonLabel = (() => {
+    if (needsVariantSelection) return 'Please select a configuration';
+    if (outOfStock) return 'Out of Stock';
+    if (isAdding) return 'Adding…';
+    return 'Add to Cart';
+  })();
+
   const handleAddToCart = async () => {
-    if (!isAuthenticated) { toast.info('Please log in to add items to your cart.'); router.push('/auth/login'); return; }
+    if (!isAuthenticated) {
+      toast.info('Please log in to add items to your cart.');
+      router.push('/auth/login');
+      return;
+    }
     setIsAdding(true);
     try {
-      await addItem(product._id, quantity);
-      toast.success(`${quantity}x ${product.name} added to cart`);
+      await addItem(product._id, quantity, selectedVariantId);
+      toast.success(`${quantity}× ${product.name} added to cart`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not add to cart.');
     } finally {
@@ -35,18 +68,18 @@ export function AddToCartPanel({ product }: { product: ProductDetail }) {
     <div className="flex flex-col sm:flex-row gap-4 mt-6">
       <QuantitySelector
         quantity={quantity}
-        onIncrease={() => setQuantity((q) => Math.min(product.stock, q + 1))}
+        onIncrease={() => setQuantity((q) => Math.min(effectiveStock, q + 1))}
         onDecrease={() => setQuantity((q) => Math.max(1, q - 1))}
-        max={product.stock}
+        max={effectiveStock}
         className="h-14 rounded-2xl border-border px-1 sm:w-36 justify-between"
       />
       <button
         onClick={handleAddToCart}
-        disabled={product.stock === 0 || isAdding}
+        disabled={isDisabled}
         className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground h-14 rounded-2xl font-bold uppercase tracking-wider text-sm hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 disabled:pointer-events-none shadow-lg shadow-primary/10"
       >
         <ShoppingBag size={18} />
-        {product.stock === 0 ? 'Out of Stock' : isAdding ? 'Adding…' : 'Add to Cart'}
+        {buttonLabel}
       </button>
       <button
         onClick={() => toggleWishlist(product._id)}
