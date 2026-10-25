@@ -9,7 +9,7 @@ import { categoryService } from '@/services/categoryService';
 import { ProductGrid } from '@/components/products/ProductGrid';
 import { FilterSidebar } from '@/components/products/FilterSidebar';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { Product, ProductFilter, SortOption } from '@/Type/product';
+import { Product, ProductFilter, SortOption, getProductPriceInfo } from '@/Type/product';
 import { CatalogCategory } from '@/Type/category';
 import { formatCurrency } from '@/utils/validators';
 
@@ -79,7 +79,14 @@ function ShopContent() {
     updateParams({ [key]: value });
   }
 
-  const maxPossiblePrice = allProducts.length > 0 ? Math.max(...allProducts.map((p) => p.finalPrice)) : 500000;
+  const maxPossiblePrice =
+    allProducts.length > 0 ? Math.max(...allProducts.map((p) => getProductPriceInfo(p).max)) : 500000;
+
+  useEffect(() => {
+    if (!maxPriceParam && allProducts.length > 0) {
+      setPriceRange(maxPossiblePrice);
+    }
+  }, [allProducts, maxPossiblePrice, maxPriceParam]);
 
   const filter: ProductFilter = {
     categoryId: selectedCategory || undefined,

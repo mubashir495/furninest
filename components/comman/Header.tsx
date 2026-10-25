@@ -7,13 +7,14 @@ import { ShoppingBag, Heart, Search, Menu, X, User, Sun, Moon, ChevronDown, Pale
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext'; 
+import { useTheme } from '@/context/ThemeContext';
 import { Input } from '@/components/ui/input';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ThemeMode } from '@/Type/theme';
 import { MonitorCog } from 'lucide-react';
 import { categoryService } from '@/services/categoryService';
 import { Category } from '@/Type/category';
+
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
@@ -32,7 +33,7 @@ export function Header() {
   const wishlistItems = useWishlistStore((state) => state.items);
   const { isAuthenticated } = useAuth();
 
-  const { mode, setMode, customTheme, setCustomTheme, isDark, toggleTheme } = useTheme();
+  const { mode, setMode, customTheme, setCustomTheme, isDark } = useTheme();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -59,18 +60,10 @@ export function Header() {
     let mounted = true;
     categoryService
       .getCategories()
-      .then((data) => {
-        if (mounted) setShopCategories(data);
-      })
-      .catch(() => {
-        if (mounted) setShopCategories([]);
-      })
-      .finally(() => {
-        if (mounted) setCategoriesLoaded(true);
-      });
-    return () => {
-      mounted = false;
-    };
+      .then((data) => { if (mounted) setShopCategories(data); })
+      .catch(() => { if (mounted) setShopCategories([]); })
+      .finally(() => { if (mounted) setCategoriesLoaded(true); });
+    return () => { mounted = false; };
   }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -82,33 +75,45 @@ export function Header() {
     }
   };
 
-  
   const themeOptions: { label: string; value: ThemeMode; icon: React.ReactNode }[] = [
-    { label: 'Light', value: 'light', icon: <Sun size={16} /> },
-    { label: 'Dark', value: 'dark', icon: <Moon size={16} /> },
+    { label: 'Light',  value: 'light',  icon: <Sun size={16} /> },
+    { label: 'Dark',   value: 'dark',   icon: <Moon size={16} /> },
     { label: 'System', value: 'system', icon: <MonitorCog size={16} /> },
     { label: 'Custom', value: 'custom', icon: <Palette size={16} /> },
   ];
 
   const navLinks = [
-    { name: 'Home', href: '/' },
-    { name: 'Shop', href: '/shop' },
+    { name: 'Home',       href: '/' },
+    { name: 'Shop',       href: '/shop' },
     { name: 'Categories', href: '/categories' },
-    { name: 'About', href: '/about' },
-    { name: 'Contact', href: '/contact' },
+    { name: 'About',      href: '/about' },
+    { name: 'Contact',    href: '/contact' },
   ];
 
   return (
     <>
+      {/*
+        ─── Styling changes vs. original ────────────────────────────────────────
+        Original: fixed top-4 left-4 right-4 z-50   (floats 16px from top)
+        New:      fixed top-9 left-4 right-4 z-40   (floats below the 36px
+                  announcement bar; z-40 lets modals at z-50 sit on top)
+
+        Everything else — glass bg, rounded-2xl border, nav, icons — is identical
+        to the original in frontend-copy.
+        ─────────────────────────────────────────────────────────────────────────
+      */}
       <header
-        className={`fixed top-4 left-4 right-4 z-50 transition-all duration-300 rounded-2xl border ${
+        className={`fixed left-4 right-4 z-40 transition-all duration-300 rounded-2xl border ${
           isScrolled || isMobileMenuOpen || isSearchOpen
             ? 'glass dark:glass-dark border-white/20 shadow-lg'
             : 'glass dark:glass-dark border-transparent soft-shadow'
         }`}
+        /* ↓ top-9 = 36px = height of AnnouncementBar */
+        style={{ top: '36px' }}
       >
         <div className="px-6 py-3">
           <div className="flex items-center justify-between">
+            {/* Hamburger (mobile) */}
             <button
               className="md:hidden p-2 -ml-2 text-primary"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -116,12 +121,12 @@ export function Header() {
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
 
+            {/* Logo */}
             <Link href="/" className="flex-shrink-0">
               <span className="font-serif text-2xl md:text-3xl font-bold tracking-widest uppercase text-primary">
                 LUXA<span className="hidden sm:inline"> FURNITURE</span>
               </span>
             </Link>
-
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-2">
@@ -138,8 +143,10 @@ export function Header() {
                   >
                     {link.name}
                   </Link>
+
+                  {/* Categories dropdown under "Shop" hover */}
                   {link.name === 'Shop' && isShopHovered && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 pt-4">
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 pt-4 z-50">
                       <div className="glass dark:glass-dark card-shadow rounded-3xl p-4 grid grid-cols-2 gap-4 w-96">
                         {!categoriesLoaded ? (
                           [...Array(4)].map((_, i) => (
@@ -178,8 +185,9 @@ export function Header() {
               ))}
             </nav>
 
-            {/* Right Icons */}
+            {/* Right icons */}
             <div className="flex items-center gap-2 md:gap-4 text-primary">
+              {/* Search */}
               <button
                 onClick={() => setIsSearchOpen(!isSearchOpen)}
                 className="p-2 hover:bg-muted rounded-full transition-colors"
@@ -187,7 +195,7 @@ export function Header() {
                 <Search size={20} />
               </button>
 
-              {/* Theme Switcher Dropdown - Desktop */}
+              {/* Theme switcher — desktop only */}
               <div className="relative hidden md:block" ref={dropdownRef}>
                 <button
                   onClick={() => setIsThemeDropdownOpen(!isThemeDropdownOpen)}
@@ -207,16 +215,12 @@ export function Header() {
                             setIsThemeDropdownOpen(false);
                           }}
                           className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
-                            mode === opt.value
-                              ? 'bg-accent/20 text-accent'
-                              : 'hover:bg-white/10'
+                            mode === opt.value ? 'bg-accent/20 text-accent' : 'hover:bg-white/10'
                           }`}
                         >
                           {opt.icon}
                           <span>{opt.label}</span>
-                          {mode === opt.value && (
-                            <span className="ml-auto text-accent">✓</span>
-                          )}
+                          {mode === opt.value && <span className="ml-auto text-accent">✓</span>}
                         </button>
                       ))}
                       {mode === 'custom' && (
@@ -227,9 +231,7 @@ export function Header() {
                           <input
                             type="color"
                             value={customTheme.primary}
-                            onChange={(e) =>
-                              setCustomTheme({ ...customTheme, primary: e.target.value })
-                            }
+                            onChange={(e) => setCustomTheme({ ...customTheme, primary: e.target.value })}
                             className="w-full h-8 p-0 border-0 rounded cursor-pointer"
                           />
                         </div>
@@ -239,12 +241,15 @@ export function Header() {
                 )}
               </div>
 
+              {/* User / account */}
               <Link
                 href={isAuthenticated ? '/account' : '/auth/login'}
                 className="hidden md:block p-2 hover:bg-muted rounded-full transition-colors"
               >
                 <User size={20} />
               </Link>
+
+              {/* Wishlist */}
               <Link href="/wishlist" className="relative p-2 hover:bg-muted rounded-full transition-colors">
                 <Heart size={20} />
                 {wishlistItems.length > 0 && (
@@ -253,6 +258,8 @@ export function Header() {
                   </span>
                 )}
               </Link>
+
+              {/* Cart */}
               <Link href="/cart" className="relative p-2 hover:bg-muted rounded-full transition-colors">
                 <ShoppingBag size={20} />
                 {itemCount > 0 && (
@@ -265,7 +272,7 @@ export function Header() {
           </div>
         </div>
 
-        {/* Search Bar */}
+        {/* Search bar (expands inline below nav) */}
         <AnimatePresence>
           {isSearchOpen && (
             <motion.div
@@ -297,14 +304,14 @@ export function Header() {
         </AnimatePresence>
       </header>
 
-      {/* Mobile Menu */}
+      {/* Mobile full-screen menu */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-background/95 backdrop-blur pt-24 px-6 flex flex-col md:hidden"
+            className="fixed inset-0 z-30 bg-background/95 backdrop-blur pt-[132px] px-6 flex flex-col md:hidden"
           >
             <nav className="flex flex-col gap-6 text-xl">
               {navLinks.map((link) => (
@@ -318,7 +325,7 @@ export function Header() {
               ))}
               <div className="h-px bg-border my-4" />
 
-              {/* Mobile Theme Options */}
+              {/* Mobile theme options */}
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground uppercase tracking-wider">Theme</p>
                 {themeOptions.map((opt) => (
@@ -342,9 +349,7 @@ export function Header() {
                     <input
                       type="color"
                       value={customTheme.primary}
-                      onChange={(e) =>
-                        setCustomTheme({ ...customTheme, primary: e.target.value })
-                      }
+                      onChange={(e) => setCustomTheme({ ...customTheme, primary: e.target.value })}
                       className="w-10 h-10 p-0 border-0 rounded cursor-pointer"
                     />
                     <span className="text-sm text-muted-foreground">Custom Color</span>

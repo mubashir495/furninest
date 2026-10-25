@@ -1,11 +1,15 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { getProductBySlug } from '@/lib/data/products';
-import { getCategoryName, suggestionToProduct } from '@/Type/product';
+import {
+  getCategoryName,
+  getTotalStock,
+  getVariantFinalPrice,
+} from '@/Type/product';
 import { ProductDetailClient } from '@/components/products/ProductDetailClient';
 import { ProductTabs } from '@/components/products/ProductTabs';
-import { ProductCarousel } from '@/components/products/ProductCarousel';
-import Link from 'next/link';
+import { PromoBanner } from '@/components/products/PromoBanner';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -17,9 +21,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const product = await getProductBySlug(slug);
   if (!product) return { title: 'Product not found' };
 
-  const description = (product.shortDescription ?? product.longDescription ?? '').slice(0, 155);
+  const description = (
+    product.seoDescription ||
+    product.shortDescription ||
+    product.longDescription ||
+    ''
+  ).slice(0, 170);
+
   return {
-    title: `${product.name} | LUXA FURNITURE`,
+    title: product.seoTitle || `${product.name} | LUXA FURNITURE`,
     description,
     alternates: { canonical: `/product/${slug}` },
     openGraph: {
@@ -37,22 +47,19 @@ export default async function ProductDetailPage({ params }: Props) {
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const baseGallery =
-    product.images.length > 0 ? product.images : [product.thumbnailImage].filter(Boolean) as string[];
+  const baseGallery: string[] =
+    product.images.length > 0
+      ? product.images
+      : product.thumbnailImage
+        ? [product.thumbnailImage]
+        : [];
+
   const categoryName = getCategoryName(product);
 
-  // JSON-LD: use the first available variant price if variants exist, otherwise finalPrice
-  const seoPrice =
-    product.variants && product.variants.length > 0
-      ? (product.variants.find((v) => v.isActive)?.salePrice ??
-         product.variants.find((v) => v.isActive)?.price ??
-         product.finalPrice)
-      : product.finalPrice;
-
-  const seoInStock =
-    product.variants && product.variants.length > 0
-      ? product.variants.some((v) => v.isActive && v.stock > 0)
-      : product.stock > 0;
+  /* ── JSON-LD ────────────────────────────────────────────────── */
+  const firstActive = product.variants?.find((v) => v.isActive);
+  const seoPrice = firstActive ? getVariantFinalPrice(firstActive) : product.finalPrice;
+  const seoInStock = getTotalStock(product) > 0;
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -72,41 +79,54 @@ export default async function ProductDetailPage({ params }: Props) {
   };
 
   return (
-    <div className="pt-4 pb-24">
+    /* Extra bottom padding on mobile for the sticky Add-to-Cart bar */
+    <div className="pb-24 lg:pb-12">
       {/* eslint-disable-next-line react/no-danger */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
 
-      <div className="container mx-auto px-6">
-        {/* Breadcrumb */}
-        <nav aria-label="Breadcrumb" className="text-sm mb-8">
-          <Link href="/">Home</Link> / <Link href="/shop">Shop</Link>
-          {categoryName && (
-            <>
-              {' '}
-              / <span className="text-primary">{categoryName}</span>
-            </>
-          )}
+      <div className="max-w-[1280px] mx-auto px-4 sm:px-6 pt-6">
+        {/* ── Breadcrumb ─────────────────────────────────────────── */}
+        <nav
+          aria-label="Breadcrumb"
+          className="text-[13px] text-[#888] mb-6 flex items-center gap-1.5 flex-wrap"
+        >
+          <Link href="/" className="hover:text-[#1a1a1a] transition-colors">
+            Home
+          </Link>
+          <span className="text-[#ccc]">›</span>
+          <Link
+            href={categoryName ? `/shop?category=${encodeURIComponent(categoryName)}` : '/shop'}
+            className="hover:text-[#1a1a1a] transition-colors"
+          >
+            {categoryName || 'Sofas'}
+          </Link>
+          <span className="text-[#ccc]">›</span>
+          <span className="text-[#1a1a1a] font-medium">{product.name}</span>
         </nav>
 
-        {/*
-          ProductDetailClient is the client island.
-          It owns: variant selection state, gallery/price sync, and the Add-to-Cart button.
-          Server-rendered portions (JSON-LD, breadcrumb, tabs, carousel) remain above/below.
-        */}
+        {/* ── Main 3-col product block ───────────────────────────── */}
         <ProductDetailClient product={product} baseGallery={baseGallery} />
 
+        {/* ── Tabs (Description / Specs / Care / Reviews) ────────── */}
         <ProductTabs
           description={product.longDescription ?? product.shortDescription}
           categoryName={categoryName}
-          stock={product.stock}
+          stock={getTotalStock(product)}
+          material={product.material}
+          dimensions={product.dimensions}
+          careInstructions={product.careInstructions}
+          features={product.features}
+          specifications={product.specifications}
+          gallery={baseGallery}
+          suggestions={product.suggestions ?? []}
+          reviewsCount={124}
         />
 
-        {product.suggestions?.length > 0 && (
-          <ProductCarousel
-            products={product.suggestions.map(suggestionToProduct)}
-            title="You May Also Like"
-          />
-        )}
+        {/* ── Promo banner ───────────────────────────────────────── */}
+        <PromoBanner />
       </div>
     </div>
   );

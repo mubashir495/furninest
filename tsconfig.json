@@ -29,8 +29,6 @@
     "**/*.mts"
   ],
   "exclude": [
-    "node_modules",
-    "lib/productService.ts",
-    "hooks/useProducts.ts"
+    "node_modules"
   ]
 }

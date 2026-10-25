@@ -3,8 +3,14 @@
 import React, { useState } from 'react';
 import { colors } from '@/config/colors';
 import { Product } from '@/Type/products';
-import { formatCurrency, formatDate } from '@/utils/validators';
-import { Eye, Edit2, Trash2, Search, Plus } from 'lucide-react';
+import {
+  Product as CatalogProduct,
+  getProductPriceInfo,
+  getTotalStock,
+  hasVariants,
+} from '@/Type/product';
+import { formatCurrency } from '@/utils/validators';
+import { Archive, Eye, Edit2, Loader2, Plus, RotateCcw, Search, Upload, Ban } from 'lucide-react';
 
 interface ProductTableProps {
   products: Product[];
@@ -13,11 +19,38 @@ interface ProductTableProps {
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   onAdd: () => void;
+  onPublish?: (product: Product) => Promise<void> | void;
+  onUnpublish?: (product: Product) => Promise<void> | void;
+  onRestore?: (product: Product) => Promise<void> | void;
   search: string;
   onSearchChange: (value: string) => void;
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  archived?: boolean;
+  onArchivedChange?: (value: boolean) => void;
+  actionLoadingId?: string | null;
+}
+
+function asCatalog(product: Product): CatalogProduct {
+  return {
+    ...(product as unknown as CatalogProduct),
+    finalPrice: product.finalPrice ?? product.price,
+    thumbnailImage: product.thumbnailImage || '',
+    created_date: product.created_date || product.createdAt || '',
+    updated_date: product.updated_date || product.updatedAt || '',
+    isActive: Boolean(product.isActive),
+  };
+}
+
+function statusMeta(product: Product) {
+  if (product.isArchived) {
+    return { label: 'Archived', bg: colors.warning[50], text: colors.warning[700] };
+  }
+  if (product.isActive) {
+    return { label: 'Published', bg: colors.success[50], text: colors.success[700] };
+  }
+  return { label: 'Unpublished', bg: colors.error[50], text: colors.error[700] };
 }
 
 export default function ProductTable({
@@ -27,11 +60,17 @@ export default function ProductTable({
   onEdit,
   onDelete,
   onAdd,
+  onPublish,
+  onUnpublish,
+  onRestore,
   search,
   onSearchChange,
   page,
   totalPages,
   onPageChange,
+  archived = false,
+  onArchivedChange,
+  actionLoadingId = null,
 }: ProductTableProps) {
   const [searchInput, setSearchInput] = useState(search);
 
@@ -40,26 +79,10 @@ export default function ProductTable({
     onSearchChange(searchInput);
   };
 
-  const getStatusColor = (isActive: boolean) => {
-    return isActive
-      ? { bg: colors.success[50], text: colors.success[700] }
-      : { bg: colors.error[50], text: colors.error[700] };
-  };
-
-  const getCategoryName = (category: any): string => {
+  const getCategoryName = (category: Product['category']): string => {
     if (!category) return 'N/A';
-    if (typeof category === 'object' && category.name) {
-      return category.name;
-    }
-    return category || 'N/A';
-  };
-
-  const getSubCategoryName = (subCategory: any): string => {
-    if (!subCategory) return 'N/A';
-    if (typeof subCategory === 'object' && subCategory.name) {
-      return subCategory.name;
-    }
-    return subCategory || 'N/A';
+    if (typeof category === 'object' && category.name) return category.name;
+    return 'N/A';
   };
 
   const wrapperStyle: React.CSSProperties = {
@@ -86,19 +109,13 @@ export default function ProductTable({
     fontSize: '0.875rem',
     outline: 'none',
     width: '300px',
-    transition: 'all 0.2s',
   };
 
-  const tableStyle: React.CSSProperties = {
-    width: '100%',
-    borderCollapse: 'collapse' as const,
-  };
-
+  const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' };
   const headerStyle: React.CSSProperties = {
     backgroundColor: colors.surface,
     borderBottom: `2px solid ${colors.border}`,
   };
-
   const headerCellStyle: React.CSSProperties = {
     padding: '1rem 1.5rem',
     textAlign: 'left',
@@ -108,26 +125,21 @@ export default function ProductTable({
     letterSpacing: '0.05em',
     color: colors.text.secondary,
   };
-
   const rowStyle: React.CSSProperties = {
     borderBottom: `1px solid ${colors.border}`,
     transition: 'background-color 0.2s',
-    cursor: 'pointer',
   };
-
   const cellStyle: React.CSSProperties = {
     padding: '1rem 1.5rem',
     fontSize: '0.875rem',
     color: colors.text.primary,
   };
-
   const thumbnailStyle: React.CSSProperties = {
     width: 48,
     height: 48,
     borderRadius: colors.radius.md,
     objectFit: 'cover',
   };
-
   const statusBadgeStyle: React.CSSProperties = {
     padding: '0.25rem 0.75rem',
     borderRadius: colors.radius.full,
@@ -135,37 +147,16 @@ export default function ProductTable({
     fontWeight: 500,
     display: 'inline-block',
   };
-
-  const tagBadgeStyle: React.CSSProperties = {
-    display: 'inline-block',
-    padding: '0.15rem 0.5rem',
-    borderRadius: colors.radius.full,
-    fontSize: '0.7rem',
-    fontWeight: 500,
-    backgroundColor: colors.surface,
-    border: `1px solid ${colors.border}`,
-    color: colors.text.secondary,
-    marginRight: '4px',
-    marginBottom: '4px',
-  };
-
-  const actionsStyle: React.CSSProperties = {
-    display: 'flex',
-    gap: '0.5rem',
-  };
-
   const actionButtonStyle: React.CSSProperties = {
     padding: '0.375rem',
     borderRadius: colors.radius.md,
     border: 'none',
     background: 'transparent',
     cursor: 'pointer',
-    transition: 'all 0.2s',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
   };
-
   const paginationStyle: React.CSSProperties = {
     padding: '1rem 1.5rem',
     borderTop: `1px solid ${colors.border}`,
@@ -175,35 +166,14 @@ export default function ProductTable({
     flexWrap: 'wrap',
     gap: '1rem',
   };
-
   const paginationButtonStyle: React.CSSProperties = {
     padding: '0.5rem 1rem',
     border: `1px solid ${colors.border}`,
     borderRadius: colors.radius.md,
     background: colors.background,
     cursor: 'pointer',
-    transition: 'all 0.2s',
     color: colors.text.primary,
   };
-
-  const paginationButtonDisabledStyle: React.CSSProperties = {
-    ...paginationButtonStyle,
-    opacity: 0.5,
-    cursor: 'not-allowed',
-  };
-
-  const loadingOverlayStyle: React.CSSProperties = {
-    padding: '3rem',
-    textAlign: 'center',
-    color: colors.text.secondary,
-  };
-
-  const emptyStateStyle: React.CSSProperties = {
-    padding: '4rem',
-    textAlign: 'center',
-    color: colors.text.secondary,
-  };
-
   const addButtonStyle: React.CSSProperties = {
     padding: '0.625rem 1.5rem',
     backgroundColor: colors.primary[500],
@@ -215,7 +185,6 @@ export default function ProductTable({
     alignItems: 'center',
     gap: '0.5rem',
     fontWeight: 500,
-    transition: 'all 0.2s',
   };
 
   const productsArray = Array.isArray(products) ? products : [];
@@ -223,8 +192,10 @@ export default function ProductTable({
   return (
     <div style={wrapperStyle}>
       <div style={searchContainerStyle}>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.75rem' }}>
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <label htmlFor="admin-product-search" className="sr-only">Search products</label>
           <input
+            id="admin-product-search"
             type="text"
             placeholder="Search products by name..."
             value={searchInput}
@@ -244,12 +215,19 @@ export default function ProductTable({
               alignItems: 'center',
               gap: '0.5rem',
               fontWeight: 500,
-              transition: 'all 0.2s',
             }}
           >
             <Search size={18} />
             Search
           </button>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.875rem', color: colors.text.secondary }}>
+            <input
+              type="checkbox"
+              checked={archived}
+              onChange={(e) => onArchivedChange?.(e.target.checked)}
+            />
+            Archived
+          </label>
         </form>
         <button onClick={onAdd} style={addButtonStyle}>
           <Plus size={18} />
@@ -264,173 +242,124 @@ export default function ProductTable({
               <th style={headerCellStyle}>Image</th>
               <th style={headerCellStyle}>Name</th>
               <th style={headerCellStyle}>Category</th>
-              <th style={headerCellStyle}>Sub Category</th>
               <th style={headerCellStyle}>Price</th>
-              <th style={headerCellStyle}>Discount</th>
-              <th style={headerCellStyle}>Final Price</th>
               <th style={headerCellStyle}>Stock</th>
-              <th style={headerCellStyle}>Colors</th>
-              <th style={headerCellStyle}>Sizes</th>
+              <th style={headerCellStyle}>Variants</th>
               <th style={headerCellStyle}>Status</th>
-              <th style={headerCellStyle}>Created</th>
               <th style={headerCellStyle}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={13} style={loadingOverlayStyle}>
-                  <div>Loading products...</div>
+                <td colSpan={8} style={{ padding: '3rem', textAlign: 'center', color: colors.text.secondary }}>
+                  Loading products...
                 </td>
               </tr>
             ) : productsArray.length === 0 ? (
               <tr>
-                <td colSpan={13} style={emptyStateStyle}>
-                  <div>
-                    <p style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '0.5rem' }}>
-                      No products found
-                    </p>
-                    <p style={{ color: colors.text.muted }}>
-                      {search ? 'Try adjusting your search' : 'Create your first product'}
-                    </p>
-                  </div>
+                <td colSpan={8} style={{ padding: '4rem', textAlign: 'center', color: colors.text.secondary }}>
+                  <p style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '0.5rem' }}>No products found</p>
+                  <p style={{ color: colors.text.muted }}>
+                    {search || archived ? 'Try adjusting your search or filter' : 'Create your first product'}
+                  </p>
                 </td>
               </tr>
             ) : (
-              productsArray.map((product: any, index) => {
-                // Fixed: isActive (boolean) instead of status (string)
-                const statusColors = getStatusColor(!!product.isActive);
+              productsArray.map((product, index) => {
+                const catalog = asCatalog(product);
+                const info = getProductPriceInfo(catalog);
+                const status = statusMeta(product);
+                const thumbnail = product.thumbnailImage || product.images?.[0] || '';
+                const variantCount = product.variants?.length ?? 0;
+                const stock = getTotalStock(catalog);
+                const busy = actionLoadingId === product._id;
                 const rowBgColor = index % 2 === 0 ? colors.background : colors.surface;
 
-                // Prefer thumbnailImage, fall back to first image
-                const thumbnail =
-                  product.thumbnailImage ||
-                  (product.images && product.images.length > 0 ? product.images[0] : '');
-
                 return (
-                  <tr
-                    key={product._id || product.id || index}
-                    style={{
-                      ...rowStyle,
-                      backgroundColor: rowBgColor,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = colors.surface;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = rowBgColor;
-                    }}
-                  >
+                  <tr key={product._id || index} style={{ ...rowStyle, backgroundColor: rowBgColor }}>
                     <td style={cellStyle}>
                       {thumbnail ? (
-                        <img
-                          src={thumbnail}
-                          alt={product.name || 'Product'}
-                          style={thumbnailStyle}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = 'none';
-                          }}
-                        />
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={thumbnail} alt={product.name || 'Product'} style={thumbnailStyle} />
                       ) : (
-                        <div style={{
-                          width: 48,
-                          height: 48,
-                          borderRadius: colors.radius.md,
-                          backgroundColor: colors.surface,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: colors.text.muted,
-                          fontSize: '10px',
-                        }}>
+                        <div style={{ width: 48, height: 48, borderRadius: colors.radius.md, backgroundColor: colors.surface, color: colors.text.muted, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           No img
                         </div>
                       )}
                     </td>
                     <td style={{ ...cellStyle, fontWeight: 500 }}>{product.name || 'Unnamed'}</td>
                     <td style={cellStyle}>{getCategoryName(product.category)}</td>
-                    <td style={cellStyle}>{getSubCategoryName(product.subCategory)}</td>
-                    <td style={cellStyle}>{formatCurrency(product.price || 0)}</td>
-                    <td style={cellStyle}>
-                      {product.discount ? `${product.discount}%` : '—'}
-                    </td>
                     <td style={{ ...cellStyle, fontWeight: 600, color: colors.primary[600] }}>
-                      {formatCurrency(product.finalPrice ?? product.price ?? 0)}
+                      {info.from || hasVariants(catalog) ? `From ${formatCurrency(info.price)}` : formatCurrency(info.price)}
                     </td>
                     <td style={cellStyle}>
-                      <span style={{
-                        color: (product.stock || 0) > 0 ? colors.success[700] : colors.error[700],
-                        fontWeight: 500,
-                      }}>
-                        {product.stock || 0}
+                      <span style={{ color: stock > 0 ? colors.success[700] : colors.error[700], fontWeight: 500 }}>
+                        {stock}
                       </span>
                     </td>
-                    <td style={{ ...cellStyle, maxWidth: '160px' }}>
-                      {product.color && product.color.length > 0 ? (
-                        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                          {product.color.map((c: string, i: number) => (
-                            <span key={i} style={tagBadgeStyle}>{c}</span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span style={{ color: colors.text.muted }}>N/A</span>
-                      )}
-                    </td>
-                    <td style={{ ...cellStyle, maxWidth: '160px' }}>
-                      {product.size && product.size.length > 0 ? (
-                        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
-                          {product.size.map((s: string, i: number) => (
-                            <span key={i} style={tagBadgeStyle}>{s}</span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span style={{ color: colors.text.muted }}>N/A</span>
-                      )}
-                    </td>
+                    <td style={cellStyle}>{variantCount}</td>
                     <td style={cellStyle}>
-                      <span style={{
-                        ...statusBadgeStyle,
-                        backgroundColor: statusColors.bg,
-                        color: statusColors.text,
-                      }}>
-                        {product.isActive ? 'Active' : 'Inactive'}
+                      <span style={{ ...statusBadgeStyle, backgroundColor: status.bg, color: status.text }}>
+                        {status.label}
                       </span>
                     </td>
                     <td style={cellStyle}>
-                      {product.created_date ? formatDate(product.created_date) : 'N/A'}
-                    </td>
-                    <td style={cellStyle}>
-                      <div style={actionsStyle}>
-                        <button
-                          onClick={() => onView(product)}
-                          style={{
-                            ...actionButtonStyle,
-                            color: colors.info[500],
-                          }}
-                          title="View product"
-                        >
+                      <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                        <button type="button" onClick={() => onView(product)} style={{ ...actionButtonStyle, color: colors.info[500] }} title="View product" aria-label={`View ${product.name}`}>
                           <Eye size={18} />
                         </button>
-                        <button
-                          onClick={() => onEdit(product)}
-                          style={{
-                            ...actionButtonStyle,
-                            color: colors.primary[500],
-                          }}
-                          title="Edit product"
-                        >
+                        <button type="button" onClick={() => onEdit(product)} style={{ ...actionButtonStyle, color: colors.primary[500] }} title="Edit product" aria-label={`Edit ${product.name}`}>
                           <Edit2 size={18} />
                         </button>
-                        <button
-                          onClick={() => onDelete(product)}
-                          style={{
-                            ...actionButtonStyle,
-                            color: colors.error[500],
-                          }}
-                          title="Delete product"
-                        >
-                          <Trash2 size={18} />
-                        </button>
+                        {product.isArchived ? (
+                          <button
+                            type="button"
+                            onClick={() => onRestore?.(product)}
+                            disabled={busy}
+                            style={{ ...actionButtonStyle, color: colors.success[700], opacity: busy ? 0.6 : 1 }}
+                            title="Restore product"
+                            aria-label={`Restore ${product.name}`}
+                          >
+                            {busy ? <Loader2 size={18} /> : <RotateCcw size={18} />}
+                          </button>
+                        ) : (
+                          <>
+                            {product.isActive ? (
+                              <button
+                                type="button"
+                                onClick={() => onUnpublish?.(product)}
+                                disabled={busy}
+                                style={{ ...actionButtonStyle, color: colors.warning[700], opacity: busy ? 0.6 : 1 }}
+                                title="Unpublish"
+                                aria-label={`Unpublish ${product.name}`}
+                              >
+                                {busy ? <Loader2 size={18} /> : <Ban size={18} />}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => onPublish?.(product)}
+                                disabled={busy}
+                                style={{ ...actionButtonStyle, color: colors.success[700], opacity: busy ? 0.6 : 1 }}
+                                title="Publish"
+                                aria-label={`Publish ${product.name}`}
+                              >
+                                {busy ? <Loader2 size={18} /> : <Upload size={18} />}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => onDelete(product)}
+                              disabled={busy}
+                              style={{ ...actionButtonStyle, color: colors.error[500], opacity: busy ? 0.6 : 1 }}
+                              title="Archive product"
+                              aria-label={`Archive ${product.name}`}
+                            >
+                              <Archive size={18} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -443,23 +372,23 @@ export default function ProductTable({
 
       {totalPages > 1 && (
         <div style={paginationStyle}>
-          <div>
-            <span style={{ color: colors.text.secondary, fontSize: '0.875rem' }}>
-              Page {page} of {totalPages}
-            </span>
-          </div>
+          <span style={{ color: colors.text.secondary, fontSize: '0.875rem' }}>
+            Page {page} of {totalPages}
+          </span>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
+              type="button"
               onClick={() => onPageChange(page - 1)}
               disabled={page === 1}
-              style={page === 1 ? paginationButtonDisabledStyle : paginationButtonStyle}
+              style={{ ...paginationButtonStyle, opacity: page === 1 ? 0.5 : 1, cursor: page === 1 ? 'not-allowed' : 'pointer' }}
             >
               Previous
             </button>
             <button
+              type="button"
               onClick={() => onPageChange(page + 1)}
               disabled={page === totalPages}
-              style={page === totalPages ? paginationButtonDisabledStyle : paginationButtonStyle}
+              style={{ ...paginationButtonStyle, opacity: page === totalPages ? 0.5 : 1, cursor: page === totalPages ? 'not-allowed' : 'pointer' }}
             >
               Next
             </button>

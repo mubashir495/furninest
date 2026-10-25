@@ -1,61 +1,99 @@
 'use client';
+
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { ChevronLeft, ChevronRight, Play } from 'lucide-react';
 
-export function ProductGallery({
-  images,
-  productName,
-  discount,
-  activeImages,
-}: {
+interface ProductGalleryProps {
   images: string[];
   productName: string;
-  discount: number;
-  /** When provided (and non-empty), display these images instead of `images`. Used for variant gallery sync. */
+  discount?: number;
+  /** When defined, show these images (variant gallery sync). Falls back to `images` when empty. */
   activeImages?: string[];
-}) {
-  const [currentImage, setCurrentImage] = useState(0);
+}
 
-  // Reset to first image whenever the active variant gallery changes
+export function ProductGallery({ images, productName, discount = 0, activeImages }: ProductGalleryProps) {
+  const [current, setCurrent] = useState(0);
+
   useEffect(() => {
-    setCurrentImage(0);
+    setCurrent(0);
   }, [activeImages]);
 
-  // Use activeImages (variant-specific) when provided, otherwise fall back to base product images
-  const gallery = (activeImages && activeImages.length > 0 ? activeImages : images.length > 0 ? images : ['/window.svg']);
+  // Resolution order: activeImages (when non-empty) → images → placeholder
+  const gallery =
+    activeImages !== undefined
+      ? activeImages.length > 0 ? activeImages : images.length > 0 ? images : ['/window.svg']
+      : images.length > 0 ? images : ['/window.svg'];
 
+  const prev = () => setCurrent((c) => (c - 1 + gallery.length) % gallery.length);
+  const next = () => setCurrent((c) => (c + 1) % gallery.length);
 
   return (
-    <div className="w-full lg:w-1/2 flex flex-col gap-4">
-      <div className="aspect-[4/5] bg-muted rounded-3xl overflow-hidden relative group">
+    <div className="flex flex-col gap-3 w-full">
+      {/* ── Main image ─────────────────────────────────────────────── */}
+      <div className="relative rounded-2xl overflow-hidden bg-[#f5f0e8] aspect-[4/3]">
         <Image
-          src={gallery[currentImage]}
+          key={gallery[current]}
+          src={gallery[current]}
           alt={productName}
           fill
-          sizes="(max-width: 1024px) 100vw, 50vw"
           priority
-          className="object-cover transition-transform duration-700 group-hover:scale-105"
+          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 55vw, 600px"
+          className="object-cover"
         />
+
+        {/* Sale badge */}
         {discount > 0 && (
-          <span className="absolute top-6 left-6 bg-accent text-accent-foreground text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-full shadow-lg z-10">
-            -{discount}%
+          <span className="absolute top-4 left-4 bg-[#e8453c] text-white text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded">
+            Sale
           </span>
+        )}
+
+        {/* Prev / Next arrows */}
+        {gallery.length > 1 && (
+          <>
+            <button
+              onClick={prev}
+              aria-label="Previous image"
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center hover:bg-[#f0ece4] transition-colors"
+            >
+              <ChevronLeft size={18} className="text-[#333]" />
+            </button>
+            <button
+              onClick={next}
+              aria-label="Next image"
+              className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center hover:bg-[#f0ece4] transition-colors"
+            >
+              <ChevronRight size={18} className="text-[#333]" />
+            </button>
+          </>
         )}
       </div>
 
+      {/* ── Thumbnail strip ─────────────────────────────────────────── */}
       {gallery.length > 1 && (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="flex gap-2 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
           {gallery.map((img, idx) => (
             <button
               key={img + idx}
-              onClick={() => setCurrentImage(idx)}
-              aria-label={`View image ${idx + 1} of ${productName}`}
-              aria-pressed={currentImage === idx}
-              className={`relative aspect-square rounded-2xl overflow-hidden border-2 transition-all ${
-                currentImage === idx ? 'border-primary opacity-100' : 'border-transparent opacity-60 hover:opacity-100'
+              onClick={() => setCurrent(idx)}
+              aria-label={`View image ${idx + 1}`}
+              aria-pressed={current === idx}
+              className={`relative shrink-0 w-[70px] h-[70px] rounded-xl overflow-hidden border-2 transition-all ${
+                current === idx
+                  ? 'border-[#1a1a1a] opacity-100'
+                  : 'border-[#e8e2d9] opacity-70 hover:opacity-100 hover:border-[#999]'
               }`}
             >
-              <Image src={img} alt="" fill sizes="120px" className="object-cover" />
+              {/* Play icon on first thumbnail to hint at a video/walkthrough */}
+              {idx === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center z-10 bg-black/20">
+                  <div className="w-6 h-6 rounded-full bg-white/80 flex items-center justify-center">
+                    <Play size={10} fill="#333" className="text-[#333] ml-0.5" />
+                  </div>
+                </div>
+              )}
+              <Image src={img} alt="" fill sizes="70px" className="object-cover" />
             </button>
           ))}
         </div>

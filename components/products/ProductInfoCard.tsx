@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Check, CircleCheck, CircleX, Tag, LayoutGrid, Award } from 'lucide-react';
-import { Product, getCategoryName } from '@/Type/product';
+import { Product, ProductVariant, getCategoryName, hasVariants } from '@/Type/product';
 
 // Curated hex fallbacks for common furniture/material color names that aren't
 // valid CSS color keywords (e.g. "Walnut", "Charcoal"). Anything not listed
@@ -27,12 +27,16 @@ function swatchColor(name: string): string {
   return COLOR_HEX_MAP[key] ?? key;
 }
 
-export function ProductInfoCard({ product }: { product: Product }) {
+export function ProductInfoCard({ product, variant }: { product: Product; variant?: ProductVariant | null }) {
   const [selectedColor, setSelectedColor] = useState<string | undefined>(product.color?.[0]);
   const [selectedSize, setSelectedSize] = useState<string | undefined>(product.size?.[0]);
 
   const categoryName = getCategoryName(product);
-  const inStock = product.stock > 0;
+  // Variant products: colour/size/stock/SKU come from the selected variant, not the product
+  const variantMode = hasVariants(product);
+  const stock = variantMode ? variant?.stock ?? 0 : product.stock;
+  const inStock = stock > 0;
+  const sku = variantMode ? variant?.sku : product.sku;
 
   return (
     <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 soft-shadow flex flex-col gap-6">
@@ -40,9 +44,9 @@ export function ProductInfoCard({ product }: { product: Product }) {
         <p className="text-muted-foreground leading-relaxed">{product.shortDescription}</p>
       )}
 
-      {(product.color?.length || product.size?.length) && <div className="h-px bg-border" />}
+      {!variantMode && (product.color?.length || product.size?.length) ? <div className="h-px bg-border" /> : null}
 
-      {product.color && product.color.length > 0 && (
+      {!variantMode && product.color && product.color.length > 0 && (
         <div>
           <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
             Color{selectedColor ? ` — ${selectedColor}` : ''}
@@ -77,7 +81,7 @@ export function ProductInfoCard({ product }: { product: Product }) {
         </div>
       )}
 
-      {product.size && product.size.length > 0 && (
+      {!variantMode && product.size && product.size.length > 0 && (
         <div>
           <span className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Size</span>
           <div className="flex flex-wrap gap-2">
@@ -115,17 +119,17 @@ export function ProductInfoCard({ product }: { product: Product }) {
           <div className="min-w-0">
             <dt className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Availability</dt>
             <dd className="text-sm font-semibold text-foreground truncate">
-              {inStock ? `In Stock (${product.stock} Available)` : 'Out of Stock'}
+              {variantMode && !variant ? 'Select an option' : inStock ? `In Stock (${stock} Available)` : 'Out of Stock'}
             </dd>
           </div>
         </div>
 
-        {product.sku && (
+        {sku && (
           <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-muted/50">
             <Tag size={18} className="text-accent shrink-0" />
             <div className="min-w-0">
               <dt className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">SKU</dt>
-              <dd className="text-sm font-semibold text-foreground truncate">{product.sku}</dd>
+              <dd className="text-sm font-semibold text-foreground truncate">{sku}</dd>
             </div>
           </div>
         )}

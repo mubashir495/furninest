@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X, Save, Loader2, ImagePlus, Plus, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Save, Loader2, ImagePlus, Plus, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { colors } from '@/config/colors';
 import { Product, ProductFormData, Category, SubCategory } from '@/Type/products';
 import { ProductVariant } from '@/Type/product';
@@ -27,6 +27,165 @@ const toId = (value: unknown): string => {
   }
   return String(value);
 };
+
+const CONFIG_NAMES = ['3-Seater', '5-Seater', 'Single Chair', 'Sofa+Chair Set', 'Complete Set'] as const;
+const HEX_RE = /^#([0-9A-Fa-f]{6})$/;
+const VARIANT_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_VARIANT_IMAGE_BYTES = 5 * 1024 * 1024;
+
+function emptyProductForm(): ProductFormData {
+  return {
+    name: '',
+    shortDescription: '',
+    longDescription: '',
+    subCategory: '',
+    price: 0,
+    discount: 0,
+    stock: 0,
+    images: [],
+    color: [],
+    size: [],
+    suggestionItems: [],
+    brand: '',
+    material: '',
+    dimensions: '',
+    careInstructions: '',
+    seoTitle: '',
+    seoDescription: '',
+    features: [],
+    specifications: [{ label: '', value: '' }],
+    isFeatured: false,
+    isActive: true,
+  };
+}
+
+function variantsFromRes(res: unknown, fallback: ProductVariant[]): ProductVariant[] {
+  const root = res as { data?: unknown } | null;
+  const first = (root && typeof root === 'object' && 'data' in root ? root.data : root) as
+    | { data?: unknown; variants?: ProductVariant[] }
+    | undefined;
+  if (Array.isArray(first?.variants)) return first.variants;
+  const nested = first?.data as { variants?: ProductVariant[] } | undefined;
+  if (Array.isArray(nested?.variants)) return nested.variants;
+  return fallback;
+}
+
+function validateVariantImageFiles(files: File[]): string | null {
+  for (const file of files) {
+    if (!VARIANT_IMAGE_TYPES.includes(file.type)) return `${file.name}: only JPEG, PNG or WEBP allowed.`;
+    if (file.size > MAX_VARIANT_IMAGE_BYTES) return `${file.name}: must be 5MB or smaller.`;
+  }
+  return null;
+}
+
+type VariantDraft = {
+  configName: string;
+  colorName: string;
+  colorHex: string;
+  sku: string;
+  price: string;
+  salePrice: string;
+  stock: string;
+  dimensions: string;
+  material: string;
+  weight: string;
+  isActive: boolean;
+};
+
+function draftFromVariant(v: ProductVariant): VariantDraft {
+  return {
+    configName: v.configName,
+    colorName: v.colorName ?? '',
+    colorHex: v.colorHex ?? '#D4A373',
+    sku: v.sku ?? '',
+    price: String(v.price),
+    salePrice: v.salePrice != null ? String(v.salePrice) : '',
+    stock: String(v.stock),
+    dimensions: v.dimensions ?? '',
+    material: v.material ?? '',
+    weight: v.weight != null ? String(v.weight) : '',
+    isActive: v.isActive,
+  };
+}
+
+const blankVariantForm: VariantDraft = {
+  configName: '',
+  colorName: '',
+  colorHex: '#D4A373',
+  sku: '',
+  price: '',
+  salePrice: '',
+  stock: '0',
+  dimensions: '',
+  material: '',
+  weight: '',
+  isActive: true,
+};
+
+function validateVariantDraft(draft: VariantDraft, siblings: ProductVariant[], exceptId?: string): string | null {
+  if (!draft.configName.trim()) return 'Configuration name is required.';
+  const price = Number(draft.price);
+  const stock = Number(draft.stock);
+  if (!Number.isFinite(price) || price < 0) return 'Price must be 0 or greater.';
+  if (!Number.isInteger(stock) || stock < 0) return 'Stock must be a whole number of 0 or greater.';
+  if (draft.colorHex && !HEX_RE.test(draft.colorHex)) return 'Colour hex must be in #RRGGBB format.';
+  if (draft.salePrice !== '') {
+    const sale = Number(draft.salePrice);
+    if (!Number.isFinite(sale) || sale < 0) return 'Sale price must be 0 or greater.';
+    if (sale >= price) return 'Sale price must be lower than price.';
+  }
+  const combo = `${draft.configName.trim().toLowerCase()}|${draft.colorName.trim().toLowerCase()}`;
+  const duplicate = siblings.some(
+    (v) =>
+      v._id !== exceptId &&
+      `${v.configName.trim().toLowerCase()}|${(v.colorName ?? '').trim().toLowerCase()}` === combo,
+  );
+  if (duplicate) return 'This configuration + colour combination already exists.';
+  return null;
+}
+
+function draftToAddForm(draft: VariantDraft, files: File[]): FormData {
+  const form = new FormData();
+  form.append('configName', draft.configName.trim());
+  form.append('colorName', draft.colorName.trim());
+  if (draft.colorHex) form.append('colorHex', draft.colorHex);
+  if (draft.sku.trim()) form.append('sku', draft.sku.trim());
+  form.append('price', String(Number(draft.price)));
+  if (draft.salePrice !== '') form.append('salePrice', draft.salePrice);
+  form.append('stock', String(Number(draft.stock)));
+  if (draft.dimensions) form.append('dimensions', draft.dimensions);
+  if (draft.material) form.append('material', draft.material);
+  if (draft.weight !== '') form.append('weight', draft.weight);
+  form.append('isActive', String(draft.isActive));
+  files.forEach((file) => form.append('images', file));
+  return form;
+}
+
+function changedVariantPayload(original: ProductVariant, draft: VariantDraft): Record<string, unknown> {
+  const payload: Record<string, unknown> = {};
+  if (draft.configName.trim() !== original.configName) payload.configName = draft.configName.trim();
+  if (draft.colorName.trim() !== (original.colorName ?? '')) payload.colorName = draft.colorName.trim();
+  if ((draft.colorHex || '') !== (original.colorHex ?? '')) payload.colorHex = draft.colorHex;
+  if (draft.sku.trim() !== (original.sku ?? '')) payload.sku = draft.sku.trim();
+  const price = Number(draft.price);
+  if (price !== original.price) payload.price = price;
+  const sale = draft.salePrice === '' ? null : Number(draft.salePrice);
+  const origSale = original.salePrice ?? null;
+  if (sale !== origSale) payload.salePrice = sale;
+  if (draft.dimensions !== (original.dimensions ?? '')) payload.dimensions = draft.dimensions;
+  if (draft.material !== (original.material ?? '')) payload.material = draft.material;
+  const weight = draft.weight === '' ? null : Number(draft.weight);
+  const origWeight = original.weight ?? null;
+  if (weight !== origWeight) payload.weight = weight;
+  if (draft.isActive !== original.isActive) payload.isActive = draft.isActive;
+  return payload;
+}
+
+function configOptions(current: string) {
+  const options = [...CONFIG_NAMES] as string[];
+  if (current && !options.includes(current)) options.push(current);
+  return options;
+}
 
 const modalStyles = {
   overlay: {
@@ -189,6 +348,158 @@ const modalStyles = {
   },
 };
 
+function VariantFields({
+  draft,
+  onChange,
+  idPrefix,
+}: {
+  draft: VariantDraft;
+  onChange: (patch: Partial<VariantDraft>) => void;
+  idPrefix: string;
+}) {
+  const pickerHex = HEX_RE.test(draft.colorHex) ? draft.colorHex : '#D4A373';
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+      <div>
+        <label style={modalStyles.label} htmlFor={`${idPrefix}-config`}>Configuration *</label>
+        <select
+          id={`${idPrefix}-config`}
+          value={draft.configName}
+          onChange={(e) => onChange({ configName: e.target.value })}
+          style={modalStyles.select}
+        >
+          <option value="">Select configuration</option>
+          {configOptions(draft.configName).map((name) => (
+            <option key={name} value={name}>{name}</option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label style={modalStyles.label} htmlFor={`${idPrefix}-color-name`}>Colour name</label>
+        <input
+          id={`${idPrefix}-color-name`}
+          type="text"
+          placeholder="e.g. Beige"
+          value={draft.colorName}
+          onChange={(e) => onChange({ colorName: e.target.value })}
+          style={modalStyles.input}
+        />
+      </div>
+      <div>
+        <label style={modalStyles.label} htmlFor={`${idPrefix}-color-hex`}>Colour hex</label>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <input
+            type="color"
+            aria-label="Colour picker"
+            value={pickerHex}
+            onChange={(e) => onChange({ colorHex: e.target.value.toUpperCase() })}
+            style={{ width: '40px', height: '40px', padding: 0, border: `1px solid ${colors.border}`, background: 'transparent', cursor: 'pointer' }}
+          />
+          <input
+            id={`${idPrefix}-color-hex`}
+            type="text"
+            placeholder="#D4A373"
+            value={draft.colorHex}
+            onChange={(e) => onChange({ colorHex: e.target.value })}
+            style={modalStyles.input}
+          />
+        </div>
+      </div>
+      <div>
+        <label style={modalStyles.label} htmlFor={`${idPrefix}-sku`}>SKU</label>
+        <input
+          id={`${idPrefix}-sku`}
+          type="text"
+          placeholder="e.g. SOFA-3S-BEI"
+          value={draft.sku}
+          onChange={(e) => onChange({ sku: e.target.value })}
+          style={modalStyles.input}
+        />
+      </div>
+      <div>
+        <label style={modalStyles.label} htmlFor={`${idPrefix}-price`}>Price *</label>
+        <input
+          id={`${idPrefix}-price`}
+          type="number"
+          min={0}
+          step="0.01"
+          value={draft.price}
+          onChange={(e) => onChange({ price: e.target.value })}
+          style={modalStyles.input}
+        />
+      </div>
+      <div>
+        <label style={modalStyles.label} htmlFor={`${idPrefix}-sale`}>Sale price (empty = no sale)</label>
+        <input
+          id={`${idPrefix}-sale`}
+          type="number"
+          min={0}
+          step="0.01"
+          placeholder="Leave blank to clear"
+          value={draft.salePrice}
+          onChange={(e) => onChange({ salePrice: e.target.value })}
+          style={modalStyles.input}
+        />
+      </div>
+      <div>
+        <label style={modalStyles.label} htmlFor={`${idPrefix}-stock`}>Stock</label>
+        <input
+          id={`${idPrefix}-stock`}
+          type="number"
+          min={0}
+          step={1}
+          value={draft.stock}
+          onChange={(e) => onChange({ stock: e.target.value })}
+          style={modalStyles.input}
+        />
+      </div>
+      <div>
+        <label style={modalStyles.label} htmlFor={`${idPrefix}-weight`}>Weight</label>
+        <input
+          id={`${idPrefix}-weight`}
+          type="number"
+          min={0}
+          step="0.01"
+          value={draft.weight}
+          onChange={(e) => onChange({ weight: e.target.value })}
+          style={modalStyles.input}
+        />
+      </div>
+      <div>
+        <label style={modalStyles.label} htmlFor={`${idPrefix}-dimensions`}>Dimensions</label>
+        <input
+          id={`${idPrefix}-dimensions`}
+          type="text"
+          placeholder="W220 × D90 × H85 cm"
+          value={draft.dimensions}
+          onChange={(e) => onChange({ dimensions: e.target.value })}
+          style={modalStyles.input}
+        />
+      </div>
+      <div>
+        <label style={modalStyles.label} htmlFor={`${idPrefix}-material`}>Material</label>
+        <input
+          id={`${idPrefix}-material`}
+          type="text"
+          placeholder="e.g. Velvet, Linen"
+          value={draft.material}
+          onChange={(e) => onChange({ material: e.target.value })}
+          style={modalStyles.input}
+        />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingTop: '22px' }}>
+        <input
+          type="checkbox"
+          id={`${idPrefix}-active`}
+          checked={draft.isActive}
+          onChange={(e) => onChange({ isActive: e.target.checked })}
+        />
+        <label htmlFor={`${idPrefix}-active`} style={{ fontSize: '13px', cursor: 'pointer' }}>Active</label>
+      </div>
+    </div>
+  );
+}
+
 export default function ProductModal({
   isOpen,
   onClose,
@@ -196,19 +507,8 @@ export default function ProductModal({
   initialData,
   loading = false,
 }: ProductModalProps) {
-  const [formData, setFormData] = useState<ProductFormData>({
-    name: '',
-    shortDescription: '',
-    longDescription: '',
-    subCategory: '',
-    price: 0,
-    discount: 0,
-    stock: 0,
-    images: [],
-    color: [],
-    size: [],
-    suggestionItems: [],
-  });
+  const [formData, setFormData] = useState<ProductFormData>(emptyProductForm());
+  const [featureInput, setFeatureInput] = useState('');
 
   const [selectedCategory, setSelectedCategory] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -232,12 +532,9 @@ export default function ProductModal({
   const [variantLoading, setVariantLoading] = useState(false);
   const [variantError, setVariantError] = useState('');
   const [variantImageFiles, setVariantImageFiles] = useState<File[]>([]);
-  const blankVariantForm = {
-    configName: '', colorName: '', colorHex: '#D4A373',
-    sku: '', price: '', salePrice: '', stock: '0',
-    dimensions: '', material: '', isActive: true,
-  };
-  const [variantForm, setVariantForm] = useState(blankVariantForm);
+  const [variantBusyId, setVariantBusyId] = useState<string | null>(null);
+  const [variantDrafts, setVariantDrafts] = useState<Record<string, VariantDraft>>({});
+  const [variantForm, setVariantForm] = useState<VariantDraft>(blankVariantForm);
 
   const { categories, loading: categoriesLoading } = useCategories();
   const { subCategories, loading: subCategoriesLoading } = useSubCategories(selectedCategory);
@@ -269,6 +566,16 @@ export default function ProductModal({
         color: initialData.color || [],
         size: initialData.size || [],
         suggestionItems: (initialData.suggestionItems || []).map(toId),
+        brand: initialData.brand || '',
+        material: initialData.material || '',
+        dimensions: initialData.dimensions || '',
+        careInstructions: initialData.careInstructions || '',
+        seoTitle: initialData.seoTitle || '',
+        seoDescription: initialData.seoDescription || '',
+        features: initialData.features || [],
+        specifications: initialData.specifications?.length ? initialData.specifications : [{ label: '', value: '' }],
+        isFeatured: Boolean(initialData.isFeatured),
+        isActive: initialData.isActive !== false,
       });
 
       setExistingImages(initialData.images || []);
@@ -278,10 +585,14 @@ export default function ProductModal({
       setThumbnailPreview('');
       setExistingThumbnail(initialData.thumbnailImage || '');
       // Sync variants
-      setVariants((initialData.variants as ProductVariant[] | undefined) ?? []);
+      const loadedVariants = (initialData.variants as ProductVariant[] | undefined) ?? [];
+      setVariants(loadedVariants);
+      setVariantDrafts(Object.fromEntries(loadedVariants.map((v) => [v._id, draftFromVariant(v)])));
       setVariantForm(blankVariantForm);
       setEditingVariantId(null);
       setVariantError('');
+      setFeatureInput('');
+      setVariantSection(true);
     } else {
       setSelectedCategory('');
       setImageFiles([]);
@@ -293,22 +604,13 @@ export default function ProductModal({
       setThumbnailPreview('');
       setExistingThumbnail('');
       setVariants([]);
+      setVariantDrafts({});
       setVariantForm(blankVariantForm);
       setEditingVariantId(null);
       setVariantError('');
-      setFormData({
-        name: '',
-        shortDescription: '',
-        longDescription: '',
-        subCategory: '',
-        price: 0,
-        discount: 0,
-        stock: 0,
-        images: [],
-        color: [],
-        size: [],
-        suggestionItems: [],
-      });
+      setFeatureInput('');
+      setVariantSection(false);
+      setFormData(emptyProductForm());
     }
   }, [initialData]);
 
@@ -361,6 +663,13 @@ export default function ProductModal({
       newErrors.thumbnail = 'Thumbnail image is required';
     }
 
+    if ((formData.seoTitle || '').length > 70) {
+      newErrors.seoTitle = 'SEO title must be 70 characters or fewer';
+    }
+    if ((formData.seoDescription || '').length > 170) {
+      newErrors.seoDescription = 'SEO description must be 170 characters or fewer';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -371,7 +680,12 @@ export default function ProductModal({
 
     try {
       setSubmitting(true);
-      await onSubmit(formData, imageFiles, thumbnailFile);
+      const payload: ProductFormData = {
+        ...formData,
+        features: (formData.features || []).map((f) => f.trim()).filter(Boolean),
+        specifications: (formData.specifications || []).filter((s) => s.label.trim() && s.value.trim()),
+      };
+      await onSubmit(payload, imageFiles, thumbnailFile);
       onClose();
     } catch (error) {
       console.error(error);
@@ -485,9 +799,40 @@ export default function ProductModal({
   };
 
   const isSubmitting = submitting || loading;
+  const variantBusy = variantLoading || Boolean(variantBusyId);
+
+  const applyVariantResponse = (res: unknown, fallback: ProductVariant[], refreshId?: string) => {
+    const next = variantsFromRes(res, fallback);
+    setVariants(next);
+    setVariantDrafts((prev) => {
+      const nextDrafts: Record<string, VariantDraft> = {};
+      for (const item of next) {
+        nextDrafts[item._id] =
+          refreshId === item._id ? draftFromVariant(item) : (prev[item._id] ?? draftFromVariant(item));
+      }
+      return nextDrafts;
+    });
+  };
+
+  const runVariantAction = async (busyKey: string, action: () => Promise<void>) => {
+    setVariantBusyId(busyKey);
+    setVariantError('');
+    try {
+      await action();
+    } catch (err) {
+      setVariantError(err instanceof Error ? err.message : 'Variant action failed.');
+    } finally {
+      setVariantBusyId(null);
+    }
+  };
 
   return (
-    <div style={modalStyles.overlay} onClick={onClose}>
+    <div
+      style={modalStyles.overlay}
+      onClick={() => {
+        if (!isSubmitting && !variantLoading && !variantBusyId) onClose();
+      }}
+    >
       <div style={modalStyles.modal} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div style={modalStyles.header}>
@@ -752,6 +1097,235 @@ export default function ProductModal({
               </div>
             </div>
 
+            {/* Brand, flags, details, SEO */}
+            <div style={modalStyles.row}>
+              <div style={modalStyles.formGroup}>
+                <label style={modalStyles.label} htmlFor="product-brand">Brand</label>
+                <input
+                  id="product-brand"
+                  type="text"
+                  value={formData.brand || ''}
+                  onChange={(e) => handleFieldChange('brand', e.target.value)}
+                  placeholder="Brand"
+                  style={modalStyles.input}
+                />
+              </div>
+              <div style={{ ...modalStyles.formGroup, display: 'flex', gap: '24px', alignItems: 'center', paddingTop: '28px' }}>
+                <label htmlFor="product-featured" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer' }}>
+                  <input
+                    id="product-featured"
+                    type="checkbox"
+                    checked={Boolean(formData.isFeatured)}
+                    onChange={(e) => handleFieldChange('isFeatured', e.target.checked)}
+                  />
+                  Featured
+                </label>
+                <label htmlFor="product-active" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer' }}>
+                  <input
+                    id="product-active"
+                    type="checkbox"
+                    checked={formData.isActive !== false}
+                    onChange={(e) => handleFieldChange('isActive', e.target.checked)}
+                  />
+                  Published (isActive)
+                </label>
+              </div>
+            </div>
+
+            <div style={modalStyles.row}>
+              <div style={modalStyles.formGroup}>
+                <label style={modalStyles.label} htmlFor="product-material">Material</label>
+                <input
+                  id="product-material"
+                  type="text"
+                  value={formData.material || ''}
+                  onChange={(e) => handleFieldChange('material', e.target.value)}
+                  placeholder="e.g. Solid oak, linen"
+                  style={modalStyles.input}
+                />
+              </div>
+              <div style={modalStyles.formGroup}>
+                <label style={modalStyles.label} htmlFor="product-dimensions">Dimensions</label>
+                <input
+                  id="product-dimensions"
+                  type="text"
+                  value={formData.dimensions || ''}
+                  onChange={(e) => handleFieldChange('dimensions', e.target.value)}
+                  placeholder="W220 × D90 × H85 cm"
+                  style={modalStyles.input}
+                />
+              </div>
+            </div>
+
+            <div style={modalStyles.formGroup}>
+              <label style={modalStyles.label} htmlFor="product-care">Care instructions</label>
+              <textarea
+                id="product-care"
+                value={formData.careInstructions || ''}
+                onChange={(e) => handleFieldChange('careInstructions', e.target.value)}
+                placeholder="How to care for this piece"
+                style={{ ...modalStyles.textarea, minHeight: '80px' }}
+              />
+            </div>
+
+            <div style={modalStyles.formGroup}>
+              <label style={modalStyles.label}>Features</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  value={featureInput}
+                  onChange={(e) => setFeatureInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      const trimmed = featureInput.trim();
+                      if (!trimmed) return;
+                      handleFieldChange('features', [...(formData.features || []), trimmed]);
+                      setFeatureInput('');
+                    }
+                  }}
+                  placeholder="Add a feature and press Enter"
+                  style={modalStyles.input}
+                  aria-label="New feature"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const trimmed = featureInput.trim();
+                    if (!trimmed) return;
+                    handleFieldChange('features', [...(formData.features || []), trimmed]);
+                    setFeatureInput('');
+                  }}
+                  style={{ ...modalStyles.button, ...modalStyles.secondaryButton, whiteSpace: 'nowrap' }}
+                >
+                  + Add
+                </button>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '10px' }}>
+                {(formData.features || []).map((feature, index) => (
+                  <span
+                    key={`${feature}-${index}`}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 10px',
+                      borderRadius: colors.radius.full,
+                      background: colors.surface,
+                      border: `1px solid ${colors.border}`,
+                      fontSize: '13px',
+                    }}
+                  >
+                    {feature}
+                    <button
+                      type="button"
+                      aria-label={`Remove ${feature}`}
+                      onClick={() =>
+                        handleFieldChange(
+                          'features',
+                          (formData.features || []).filter((_, i) => i !== index),
+                        )
+                      }
+                      style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0 }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div style={modalStyles.formGroup}>
+              <label style={modalStyles.label}>Specifications</label>
+              {(formData.specifications || []).map((row, index) => (
+                <div key={index} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px', marginBottom: '8px' }}>
+                  <input
+                    type="text"
+                    aria-label={`Specification ${index + 1} label`}
+                    placeholder="Label"
+                    value={row.label}
+                    onChange={(e) => {
+                      const next = [...(formData.specifications || [])];
+                      next[index] = { ...next[index], label: e.target.value };
+                      handleFieldChange('specifications', next);
+                    }}
+                    style={modalStyles.input}
+                  />
+                  <input
+                    type="text"
+                    aria-label={`Specification ${index + 1} value`}
+                    placeholder="Value"
+                    value={row.value}
+                    onChange={(e) => {
+                      const next = [...(formData.specifications || [])];
+                      next[index] = { ...next[index], value: e.target.value };
+                      handleFieldChange('specifications', next);
+                    }}
+                    style={modalStyles.input}
+                  />
+                  <button
+                    type="button"
+                    aria-label={`Remove specification ${index + 1}`}
+                    onClick={() =>
+                      handleFieldChange(
+                        'specifications',
+                        (formData.specifications || []).filter((_, i) => i !== index),
+                      )
+                    }
+                    style={{ ...modalStyles.button, ...modalStyles.secondaryButton }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  handleFieldChange('specifications', [...(formData.specifications || []), { label: '', value: '' }])
+                }
+                style={{ ...modalStyles.button, ...modalStyles.secondaryButton }}
+              >
+                + Add specification
+              </button>
+            </div>
+
+            <div style={modalStyles.formGroup}>
+              <label style={modalStyles.label} htmlFor="product-seo-title">
+                SEO title{' '}
+                <span style={{ fontWeight: 400, color: colors.text.muted }}>
+                  ({(formData.seoTitle || '').length}/70)
+                </span>
+              </label>
+              <input
+                id="product-seo-title"
+                type="text"
+                maxLength={70}
+                value={formData.seoTitle || ''}
+                onChange={(e) => handleFieldChange('seoTitle', e.target.value)}
+                placeholder="Shown in search results"
+                style={modalStyles.input}
+              />
+              {errors.seoTitle && <p style={modalStyles.error}>{errors.seoTitle}</p>}
+            </div>
+
+            <div style={modalStyles.formGroup}>
+              <label style={modalStyles.label} htmlFor="product-seo-description">
+                SEO description{' '}
+                <span style={{ fontWeight: 400, color: colors.text.muted }}>
+                  ({(formData.seoDescription || '').length}/170)
+                </span>
+              </label>
+              <textarea
+                id="product-seo-description"
+                maxLength={170}
+                value={formData.seoDescription || ''}
+                onChange={(e) => handleFieldChange('seoDescription', e.target.value)}
+                placeholder="Meta description"
+                style={{ ...modalStyles.textarea, minHeight: '80px' }}
+              />
+              {errors.seoDescription && <p style={modalStyles.error}>{errors.seoDescription}</p>}
+            </div>
+
             {/* Thumbnail Image */}
             <div style={modalStyles.formGroup}>
               <label style={modalStyles.label}>Thumbnail Image *</label>
@@ -864,203 +1438,349 @@ export default function ProductModal({
               </div>
             </div>
 
-            {/* ── Variants Section (edit mode only — requires saved product _id) ── */}
-            {initialData?._id && (
-              <div style={{ ...modalStyles.formGroup, border: `1px solid ${colors.border}`, borderRadius: '10px', padding: '16px', marginTop: '8px' }}>
-                <div
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' as const }}
-                  onClick={() => setVariantSection(v => !v)}
-                >
-                  <label style={{ ...modalStyles.label, margin: 0, cursor: 'pointer' }}>
-                    Variants ({variants.length})
-                  </label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '12px', color: colors.text.muted }}>Configs, colours &amp; pricing</span>
-                    {variantSection ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </div>
+            {/* ── Variants ── */}
+            <div style={{ ...modalStyles.formGroup, border: `1px solid ${colors.border}`, borderRadius: '10px', padding: '16px', marginTop: '8px' }}>
+              <div
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' as const }}
+                onClick={() => setVariantSection((v) => !v)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setVariantSection((v) => !v);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                aria-expanded={variantSection}
+              >
+                <label style={{ ...modalStyles.label, margin: 0, cursor: 'pointer' }}>
+                  Variants ({variants.length})
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '12px', color: colors.text.muted }}>Configs, colours &amp; pricing</span>
+                  {variantSection ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                 </div>
+              </div>
 
-                {variantSection && (
-                  <div style={{ marginTop: '16px' }}>
-                    {variantError && <p style={{ ...modalStyles.error, marginBottom: '12px' }}>{variantError}</p>}
+              {variantSection && (
+                <div style={{ marginTop: '16px' }}>
+                  {!initialData?._id ? (
+                    <p style={{ fontSize: '14px', color: colors.text.muted, margin: 0 }}>
+                      Save the product first, then add variants.
+                    </p>
+                  ) : (
+                    <>
+                      {variantError && <p style={{ ...modalStyles.error, marginBottom: '12px' }}>{variantError}</p>}
 
-                    {/* Existing variants */}
-                    {variants.length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                        {variants.map(v => (
-                          <div
-                            key={v._id}
-                            style={{
-                              display: 'flex', alignItems: 'center', gap: '12px',
-                              padding: '10px 14px', borderRadius: '8px',
-                              border: `1px solid ${colors.border}`,
-                              background: v.isActive ? colors.surface : '#f3f4f6',
-                              opacity: v.isActive ? 1 : 0.6,
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
+                        {variants.map((variant) => {
+                          const draft = variantDrafts[variant._id] ?? draftFromVariant(variant);
+                          const images = variant.images ?? [];
+                          const saveBusy = variantBusyId === `${variant._id}:save`;
+                          const stockBusy = variantBusyId === `${variant._id}:stock`;
+                          const imageBusy = variantBusyId?.startsWith(`${variant._id}:img`);
+                          const deleteBusy = variantBusyId === `${variant._id}:delete`;
+
+                          return (
+                            <div
+                              key={variant._id}
+                              style={{
+                                border: `1px solid ${colors.border}`,
+                                borderRadius: '10px',
+                                padding: '16px',
+                                background: variant.isActive ? '#fff' : '#f8f8f8',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '12px' }}>
+                                <strong style={{ fontSize: '14px' }}>
+                                  {variant.configName}
+                                  {variant.colorName ? ` — ${variant.colorName}` : ''}
+                                </strong>
+                                <span style={{ fontSize: '12px', color: variant.isActive ? colors.text.muted : '#b45309' }}>
+                                  {variant.isActive ? 'Active' : 'Inactive'}
+                                </span>
+                              </div>
+
+                              <VariantFields
+                                draft={draft}
+                                idPrefix={variant._id}
+                                onChange={(patch) =>
+                                  setVariantDrafts((prev) => ({
+                                    ...prev,
+                                    [variant._id]: { ...(prev[variant._id] ?? draft), ...patch },
+                                  }))
+                                }
+                              />
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '13px', fontWeight: 600 }}>Quick stock ({variant.stock})</span>
+                                <button
+                                  type="button"
+                                  disabled={variantBusy || variant.stock <= 0}
+                                  aria-label="Decrease stock by 1"
+                                  onClick={() =>
+                                    runVariantAction(`${variant._id}:stock`, async () => {
+                                      const res = await productService.adjustVariantStock(initialData._id, variant._id, { delta: -1 });
+                                      applyVariantResponse(res, variants, variant._id);
+                                    })
+                                  }
+                                  style={{ ...modalStyles.button, ...modalStyles.secondaryButton, opacity: stockBusy ? 0.6 : 1 }}
+                                >
+                                  {stockBusy ? <Loader2 size={14} /> : '-1'}
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={variantBusy}
+                                  aria-label="Increase stock by 1"
+                                  onClick={() =>
+                                    runVariantAction(`${variant._id}:stock`, async () => {
+                                      const res = await productService.adjustVariantStock(initialData._id, variant._id, { delta: 1 });
+                                      applyVariantResponse(res, variants, variant._id);
+                                    })
+                                  }
+                                  style={{ ...modalStyles.button, ...modalStyles.secondaryButton, opacity: stockBusy ? 0.6 : 1 }}
+                                >
+                                  {stockBusy ? <Loader2 size={14} /> : '+1'}
+                                </button>
+                              </div>
+
+                              <div style={{ marginTop: '14px' }}>
+                                <label style={modalStyles.label}>Variant images</label>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                                  {images.map((url, index) => (
+                                    <div key={url} style={{ width: 92, textAlign: 'center' }}>
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={url}
+                                        alt=""
+                                        style={{ width: 92, height: 92, objectFit: 'cover', borderRadius: 8, border: index === 0 ? `2px solid ${colors.primary[500]}` : `1px solid ${colors.border}` }}
+                                      />
+                                      <div style={{ display: 'flex', justifyContent: 'center', gap: 4, marginTop: 4 }}>
+                                        <button
+                                          type="button"
+                                          disabled={variantBusy || index === 0}
+                                          aria-label="Move image up"
+                                          onClick={() => {
+                                            const next = [...images];
+                                            [next[index - 1], next[index]] = [next[index], next[index - 1]];
+                                            runVariantAction(`${variant._id}:img-order`, async () => {
+                                              const res = await productService.reorderVariantImages(initialData._id, variant._id, next);
+                                              applyVariantResponse(res, variants);
+                                            });
+                                          }}
+                                          style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
+                                        >
+                                          <ChevronLeft size={14} />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={variantBusy || index === images.length - 1}
+                                          aria-label="Move image down"
+                                          onClick={() => {
+                                            const next = [...images];
+                                            [next[index + 1], next[index]] = [next[index], next[index + 1]];
+                                            runVariantAction(`${variant._id}:img-order`, async () => {
+                                              const res = await productService.reorderVariantImages(initialData._id, variant._id, next);
+                                              applyVariantResponse(res, variants);
+                                            });
+                                          }}
+                                          style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
+                                        >
+                                          <ChevronRight size={14} />
+                                        </button>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        disabled={variantBusy || index === 0}
+                                        onClick={() =>
+                                          runVariantAction(`${variant._id}:img-primary`, async () => {
+                                            const res = await productService.setPrimaryVariantImage(initialData._id, variant._id, url);
+                                            applyVariantResponse(res, variants);
+                                          })
+                                        }
+                                        style={{ ...modalStyles.button, ...modalStyles.secondaryButton, fontSize: 11, padding: '4px 6px', width: '100%', marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                                      >
+                                        <Star size={12} /> {index === 0 ? 'Primary' : 'Set primary'}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={variantBusy}
+                                        onClick={() => {
+                                          if (!confirm('Remove this image?')) return;
+                                          runVariantAction(`${variant._id}:img-del`, async () => {
+                                            const res = await productService.removeVariantImage(initialData._id, variant._id, url);
+                                            applyVariantResponse(res, variants);
+                                          });
+                                        }}
+                                        style={{ ...modalStyles.button, fontSize: 11, padding: '4px 6px', width: '100%', marginTop: 4, background: '#fef2f2', color: '#dc2626' }}
+                                      >
+                                        Delete
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                                <input
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp"
+                                  multiple
+                                  disabled={variantBusy}
+                                  aria-label={`Upload images for ${variant.configName}`}
+                                  onChange={(e) => {
+                                    const files = Array.from(e.target.files ?? []);
+                                    e.target.value = '';
+                                    if (!files.length) return;
+                                    const invalid = validateVariantImageFiles(files);
+                                    if (invalid) {
+                                      setVariantError(invalid);
+                                      return;
+                                    }
+                                    runVariantAction(`${variant._id}:img-up`, async () => {
+                                      const res = await productService.uploadVariantImages(initialData._id, variant._id, files);
+                                      applyVariantResponse(res, variants);
+                                    });
+                                  }}
+                                  style={{ fontSize: '13px', marginTop: '8px' }}
+                                />
+                                {imageBusy && <p style={{ fontSize: 12, color: colors.text.muted }}>Updating images…</p>}
+                              </div>
+
+                              <div style={{ display: 'flex', gap: '8px', marginTop: '14px', flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                  disabled={variantBusy}
+                                  onClick={() =>
+                                    runVariantAction(`${variant._id}:save`, async () => {
+                                      const err = validateVariantDraft(draft, variants, variant._id);
+                                      if (err) throw new Error(err);
+                                      const payload = changedVariantPayload(variant, draft);
+                                      const stockChanged = Number(draft.stock) !== variant.stock;
+                                      if (!Object.keys(payload).length && !stockChanged) {
+                                        throw new Error('No changes to save.');
+                                      }
+                                      if (Object.keys(payload).length) {
+                                        const res = await productService.updateVariant(initialData._id, variant._id, payload);
+                                        applyVariantResponse(res, variants, variant._id);
+                                      }
+                                      if (stockChanged) {
+                                        const res = await productService.adjustVariantStock(initialData._id, variant._id, {
+                                          stock: Number(draft.stock),
+                                        });
+                                        applyVariantResponse(res, variants, variant._id);
+                                      }
+                                    })
+                                  }
+                                  style={{ ...modalStyles.button, ...modalStyles.primaryButton, display: 'flex', alignItems: 'center', gap: 6, opacity: saveBusy ? 0.6 : 1 }}
+                                >
+                                  {saveBusy ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Save size={14} />}
+                                  Save variant
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={variantBusy}
+                                  onClick={() => {
+                                    if (!confirm(`Delete "${variant.configName}"? This cannot be undone.`)) return;
+                                    runVariantAction(`${variant._id}:delete`, async () => {
+                                      await productService.deleteVariant(initialData._id, variant._id);
+                                      setVariants((prev) => prev.filter((item) => item._id !== variant._id));
+                                      setVariantDrafts((prev) => {
+                                        const next = { ...prev };
+                                        delete next[variant._id];
+                                        return next;
+                                      });
+                                    });
+                                  }}
+                                  style={{ ...modalStyles.button, background: '#fef2f2', color: '#dc2626', display: 'flex', alignItems: 'center', gap: 6, opacity: deleteBusy ? 0.6 : 1 }}
+                                >
+                                  {deleteBusy ? <Loader2 size={14} /> : <Trash2 size={14} />}
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div style={{ border: `1px dashed ${colors.border}`, borderRadius: '8px', padding: '16px', background: '#fafafa' }}>
+                        <p style={{ fontWeight: 600, fontSize: '13px', marginBottom: '12px' }}>Add new variant</p>
+                        <VariantFields
+                          draft={variantForm}
+                          idPrefix="new-variant"
+                          onChange={(patch) => setVariantForm((prev) => ({ ...prev, ...patch }))}
+                        />
+                        <div style={{ marginTop: '12px' }}>
+                          <label style={modalStyles.label} htmlFor="new-variant-images">Images</label>
+                          <input
+                            id="new-variant-images"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            multiple
+                            onChange={(e) => {
+                              const files = Array.from(e.target.files ?? []);
+                              const invalid = validateVariantImageFiles(files);
+                              if (invalid) {
+                                setVariantError(invalid);
+                                setVariantImageFiles([]);
+                                e.target.value = '';
+                                return;
+                              }
+                              setVariantError('');
+                              setVariantImageFiles(files);
                             }}
-                          >
-                            {v.colorHex && (
-                              <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: v.colorHex, border: '1px solid #ccc', flexShrink: 0 }} />
-                            )}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontWeight: 600, fontSize: '13px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {v.configName}{v.colorName ? ` — ${v.colorName}` : ''}
-                              </div>
-                              <div style={{ fontSize: '12px', color: colors.text.muted, marginTop: '2px' }}>
-                                £{v.salePrice != null ? v.salePrice : v.price}
-                                {v.salePrice != null && <span style={{ marginLeft: '6px', textDecoration: 'line-through', color: '#bbb' }}>£{v.price}</span>}
-                                {' · '}{v.stock} stock{v.sku ? ` · ${v.sku}` : ''}{v.images?.length ? ` · ${v.images.length} img` : ''}
-                              </div>
+                            style={{ fontSize: '13px' }}
+                          />
+                          {variantImageFiles.length > 0 && (
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                              {variantImageFiles.map((file) => (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  key={file.name + file.size}
+                                  src={URL.createObjectURL(file)}
+                                  alt={file.name}
+                                  style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8 }}
+                                />
+                              ))}
                             </div>
-                            <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingVariantId(v._id);
-                                  setVariantForm({ configName: v.configName, colorName: v.colorName ?? '', colorHex: v.colorHex ?? '#D4A373', sku: v.sku ?? '', price: String(v.price), salePrice: v.salePrice != null ? String(v.salePrice) : '', stock: String(v.stock), dimensions: v.dimensions ?? '', material: v.material ?? '', isActive: v.isActive });
-                                  setVariantImageFiles([]); setVariantError('');
-                                }}
-                                style={{ padding: '4px 10px', fontSize: '12px', borderRadius: '6px', border: `1px solid ${colors.border}`, background: '#fff', cursor: 'pointer' }}
-                              >Edit</button>
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  if (!confirm(`Delete "${v.configName}"?`)) return;
-                                  setVariantLoading(true); setVariantError('');
-                                  try {
-                                    await productService.deleteVariant(initialData._id, v._id);
-                                    setVariants(prev => prev.filter(x => x._id !== v._id));
-                                  } catch (e: any) { setVariantError(e.message); }
-                                  finally { setVariantLoading(false); }
-                                }}
-                                style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #fca5a5', background: '#fef2f2', color: '#dc2626', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                              ><Trash2 size={13} /></button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Add / Edit form */}
-                    <div style={{ border: `1px dashed ${colors.border}`, borderRadius: '8px', padding: '16px', background: '#fafafa' }}>
-                      <p style={{ fontWeight: 600, fontSize: '13px', marginBottom: '12px' }}>
-                        {editingVariantId ? '✏️ Edit Variant' : '➕ Add New Variant'}
-                      </p>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        <div>
-                          <label style={modalStyles.label}>Configuration *</label>
-                          <input type="text" placeholder="e.g. 3-Seater" value={variantForm.configName} onChange={e => setVariantForm(f => ({ ...f, configName: e.target.value }))} style={modalStyles.input} />
+                          )}
                         </div>
-                        <div>
-                          <label style={modalStyles.label}>Colour Name</label>
-                          <input type="text" placeholder="e.g. Beige" value={variantForm.colorName} onChange={e => setVariantForm(f => ({ ...f, colorName: e.target.value }))} style={modalStyles.input} />
-                        </div>
-                        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-                          <div style={{ flex: 1 }}>
-                            <label style={modalStyles.label}>Colour Hex</label>
-                            <input type="text" placeholder="#D4A373" value={variantForm.colorHex} onChange={e => setVariantForm(f => ({ ...f, colorHex: e.target.value }))} style={modalStyles.input} />
-                          </div>
-                          <div style={{ width: '40px', height: '40px', borderRadius: '8px', border: '1px solid #ccc', background: variantForm.colorHex, flexShrink: 0, marginBottom: '2px' }} />
-                        </div>
-                        <div>
-                          <label style={modalStyles.label}>SKU</label>
-                          <input type="text" placeholder="e.g. SOFA-3S-BEI" value={variantForm.sku} onChange={e => setVariantForm(f => ({ ...f, sku: e.target.value }))} style={modalStyles.input} />
-                        </div>
-                        <div>
-                          <label style={modalStyles.label}>Price (£) *</label>
-                          <input type="number" min="0" step="0.01" placeholder="0.00" value={variantForm.price} onChange={e => setVariantForm(f => ({ ...f, price: e.target.value }))} style={modalStyles.input} />
-                        </div>
-                        <div>
-                          <label style={modalStyles.label}>Sale Price (£)</label>
-                          <input type="number" min="0" step="0.01" placeholder="Leave blank if no sale" value={variantForm.salePrice} onChange={e => setVariantForm(f => ({ ...f, salePrice: e.target.value }))} style={modalStyles.input} />
-                        </div>
-                        <div>
-                          <label style={modalStyles.label}>Stock</label>
-                          <input type="number" min="0" value={variantForm.stock} onChange={e => setVariantForm(f => ({ ...f, stock: e.target.value }))} style={modalStyles.input} />
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', paddingTop: '22px' }}>
-                          <input type="checkbox" id="variantActiveChk" checked={variantForm.isActive} onChange={e => setVariantForm(f => ({ ...f, isActive: e.target.checked }))} />
-                          <label htmlFor="variantActiveChk" style={{ fontSize: '13px', cursor: 'pointer' }}>Active</label>
-                        </div>
-                        <div>
-                          <label style={modalStyles.label}>Dimensions</label>
-                          <input type="text" placeholder='W220 × D90 × H85 cm' value={variantForm.dimensions} onChange={e => setVariantForm(f => ({ ...f, dimensions: e.target.value }))} style={modalStyles.input} />
-                        </div>
-                        <div>
-                          <label style={modalStyles.label}>Material</label>
-                          <input type="text" placeholder="e.g. Velvet, Linen" value={variantForm.material} onChange={e => setVariantForm(f => ({ ...f, material: e.target.value }))} style={modalStyles.input} />
-                        </div>
-                      </div>
-
-                      {/* Variant image upload */}
-                      <div style={{ marginTop: '12px' }}>
-                        <label style={modalStyles.label}>Variant Images</label>
-                        <input type="file" accept="image/*" multiple onChange={e => setVariantImageFiles(Array.from(e.target.files ?? []))} style={{ fontSize: '13px' }} />
-                        {variantImageFiles.length > 0 && <p style={{ fontSize: '12px', color: colors.text.muted, marginTop: '4px' }}>{variantImageFiles.length} image(s) selected</p>}
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
                         <button
                           type="button"
-                          disabled={variantLoading || !variantForm.configName.trim() || !variantForm.price}
-                          onClick={async () => {
-                            if (!variantForm.configName.trim() || !variantForm.price) { setVariantError('Configuration name and price are required.'); return; }
-                            setVariantLoading(true); setVariantError('');
-                            try {
-                              const payload: Record<string, unknown> = {
-                                configName: variantForm.configName.trim(),
-                                price: Number(variantForm.price),
-                                stock: Number(variantForm.stock),
-                                isActive: variantForm.isActive,
-                                ...(variantForm.colorName && { colorName: variantForm.colorName }),
-                                ...(variantForm.colorHex && { colorHex: variantForm.colorHex }),
-                                ...(variantForm.sku && { sku: variantForm.sku }),
-                                ...(variantForm.salePrice && { salePrice: Number(variantForm.salePrice) }),
-                                ...(variantForm.dimensions && { dimensions: variantForm.dimensions }),
-                                ...(variantForm.material && { material: variantForm.material }),
-                              };
-                              if (editingVariantId) {
-                                const res: any = await productService.updateVariant(initialData._id, editingVariantId, payload);
-                                if (variantImageFiles.length > 0) await productService.uploadVariantImages(initialData._id, editingVariantId, variantImageFiles);
-                                const updatedVariants: ProductVariant[] = res?.data?.variants ?? [];
-                                setVariants(updatedVariants.length ? updatedVariants : prev => prev.map(v => v._id === editingVariantId ? { ...v, ...payload } as ProductVariant : v));
-                                setEditingVariantId(null);
-                              } else {
-                                const form = new FormData();
-                                Object.entries(payload).forEach(([k, val]) => form.append(k, String(val)));
-                                variantImageFiles.forEach(f => form.append('images', f));
-                                const res: any = await productService.addVariant(initialData._id, form);
-                                const newVariants: ProductVariant[] = res?.data?.variants ?? [];
-                                setVariants(newVariants.length ? newVariants : prev => [...prev]);
-                              }
-                              setVariantForm(blankVariantForm); setVariantImageFiles([]);
-                            } catch (e: any) { setVariantError(e.message); }
-                            finally { setVariantLoading(false); }
+                          disabled={variantBusy}
+                          onClick={() =>
+                            runVariantAction('add', async () => {
+                              const err = validateVariantDraft(variantForm, variants);
+                              if (err) throw new Error(err);
+                              const res = await productService.addVariant(initialData._id, draftToAddForm(variantForm, variantImageFiles));
+                              applyVariantResponse(res, variants);
+                              setVariantForm(blankVariantForm);
+                              setVariantImageFiles([]);
+                            })
+                          }
+                          style={{
+                            ...modalStyles.button,
+                            ...modalStyles.primaryButton,
+                            marginTop: 14,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            opacity: variantBusyId === 'add' ? 0.6 : 1,
                           }}
-                          style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', fontSize: '13px', fontWeight: 600, borderRadius: '8px', border: 'none', cursor: 'pointer', background: colors.primary[500], color: '#fff', opacity: variantLoading ? 0.6 : 1 }}
                         >
-                          {variantLoading ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={14} />}
-                          {editingVariantId ? 'Save Changes' : 'Add Variant'}
+                          {variantBusyId === 'add' ? <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={14} />}
+                          Add variant
                         </button>
-                        {editingVariantId && (
-                          <button
-                            type="button"
-                            onClick={() => { setEditingVariantId(null); setVariantForm(blankVariantForm); setVariantImageFiles([]); setVariantError(''); }}
-                            style={{ padding: '8px 14px', fontSize: '13px', borderRadius: '8px', border: `1px solid ${colors.border}`, background: '#fff', cursor: 'pointer' }}
-                          >Cancel Edit</button>
-                        )}
                       </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Footer */}
             <div style={modalStyles.footer}>
               <button
                 type="button"
                 onClick={onClose}
-                disabled={isSubmitting}
+                disabled={isSubmitting || variantBusy}
                 style={{
                   ...modalStyles.button,
                   ...modalStyles.secondaryButton,
@@ -1070,11 +1790,11 @@ export default function ProductModal({
               </button>
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || variantBusy}
                 style={{
                   ...modalStyles.button,
                   ...modalStyles.primaryButton,
-                  ...(isSubmitting ? modalStyles.buttonDisabled : {}),
+                  ...(isSubmitting || variantBusy ? modalStyles.buttonDisabled : {}),
                 }}
               >
                 {isSubmitting ? (

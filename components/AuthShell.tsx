@@ -18,8 +18,8 @@ export function AuthShell({
     <main className="h-screen flex items-center justify-center bg-gradient-to-br from-[#FBF7F2] via-[#F5EFE3] to-[#EDE5D8] px-6 py-16">
       <div className="w-full max-w-md">
         {/* Brand Logo */}
-        <Link 
-          href="/" 
+        <Link
+          href="/"
           className="inline-flex items-center gap-2 mb-8 text-2xl font-semibold text-[#3D2B1F] hover:text-[#8B5E34] transition-colors"
         >
           <span className="text-3xl">🪑</span>
@@ -53,8 +53,8 @@ export function FormField({
   id,
   className = '',
   ...props
-}: { 
-  label: string; 
+}: {
+  label: string;
   className?: string;
 } & InputHTMLAttributes<HTMLInputElement>) {
   return (
@@ -71,13 +71,13 @@ export function FormField({
   );
 }
 
-export function SubmitButton({ 
-  loading, 
+export function SubmitButton({
+  loading,
   children,
   className = '',
   onClick,
-}: { 
-  loading: boolean; 
+}: {
+  loading: boolean;
   children: ReactNode;
   className?: string;
   onClick?: () => void;
@@ -126,7 +126,6 @@ export function SuccessBanner({ message }: { message: string }) {
   );
 }
 
-// Additional component: InfoBanner
 export function InfoBanner({ message }: { message: string }) {
   if (!message) return null;
   return (
@@ -139,14 +138,13 @@ export function InfoBanner({ message }: { message: string }) {
   );
 }
 
-// Additional component: SocialLoginButton
-export function SocialLoginButton({ 
-  provider, 
-  icon, 
-  onClick 
-}: { 
-  provider: string; 
-  icon: ReactNode; 
+export function SocialLoginButton({
+  provider,
+  icon,
+  onClick,
+}: {
+  provider: string;
+  icon: ReactNode;
   onClick?: () => void;
 }) {
   return (
@@ -161,8 +159,7 @@ export function SocialLoginButton({
   );
 }
 
-// Additional component: Divider
-export function Divider({ text = "Or continue with" }: { text?: string }) {
+export function Divider({ text = 'Or continue with' }: { text?: string }) {
   return (
     <div className="relative my-6">
       <div className="absolute inset-0 flex items-center">

@@ -1,15 +1,54 @@
 import api, { getApiErrorMessage } from '@/lib/axios';
-import { Product, ProductDetail, ProductFilter } from '@/Type/product';
+import {
+  Product,
+  ProductDetail,
+  ProductFilter,
+  getProductInStock,
+  getProductPriceInfo,
+} from '@/Type/product';
 
-// NOTE: the backend's GET /products has no search/pagination/filter query
-// params — it always returns the full catalog. All filtering, sorting, and
-// pagination below happens on the client against that full list.
+export interface ProductListQuery {
+  page?: number;
+  limit?: number;
+  search?: string;
+  category?: string;
+  subCategory?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  sort?: 'newest' | 'price_asc' | 'price_desc' | 'name';
+  inStock?: boolean;
+  featured?: boolean;
+}
+
+export interface ProductListMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+// GET /products with no query returns the full catalog (legacy behaviour) and the
+// shop page filters it client-side with applyFilters. GET /products also supports
+// page/limit/search/sort/... — use getProductsPage() for real server-side paging.
 
 export const productService = {
   async getAllProducts(): Promise<Product[]> {
     try {
       const { data } = await api.get('/products');
       return data.data ?? [];
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Could not load products.'));
+    }
+  },
+
+  /** Server-side search / filter / sort / pagination. */
+  async getProductsPage(query: ProductListQuery): Promise<{ data: Product[]; meta: ProductListMeta }> {
+    try {
+      const { data } = await api.get('/products', { params: query });
+      return {
+        data: data.data ?? [],
+        meta: data.meta ?? { page: 1, limit: data.data?.length ?? 0, total: data.data?.length ?? 0, totalPages: 1 },
+      };
     } catch (error) {
       throw new Error(getApiErrorMessage(error, 'Could not load products.'));
     }
@@ -51,14 +90,14 @@ export const productService = {
     }
   },
 
-  // Client-side search across name / shortDescription (backend has no /search route)
   searchProducts(products: Product[], query: string): Product[] {
     const q = query.trim().toLowerCase();
     if (!q) return products;
     return products.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
-        p.shortDescription.toLowerCase().includes(q),
+        (p.shortDescription ?? '').toLowerCase().includes(q) ||
+        (p.brand ?? '').toLowerCase().includes(q),
     );
   },
 
@@ -80,25 +119,26 @@ export const productService = {
           : p.subCategory._id === filter.subCategoryId,
       );
     }
+    // Prices / stock / sale are variant-aware (cheapest active variant for variant products)
     if (filter.minPrice !== undefined) {
-      result = result.filter((p) => p.finalPrice >= filter.minPrice!);
+      result = result.filter((p) => getProductPriceInfo(p).max >= filter.minPrice!);
     }
     if (filter.maxPrice !== undefined) {
-      result = result.filter((p) => p.finalPrice <= filter.maxPrice!);
+      result = result.filter((p) => getProductPriceInfo(p).price <= filter.maxPrice!);
     }
     if (filter.inStock) {
-      result = result.filter((p) => p.stock > 0);
+      result = result.filter((p) => getProductInStock(p));
     }
     if (filter.onSale) {
-      result = result.filter((p) => p.discount > 0);
+      result = result.filter((p) => getProductPriceInfo(p).original !== null);
     }
 
     switch (filter.sortBy) {
       case 'price-asc':
-        result.sort((a, b) => a.finalPrice - b.finalPrice);
+        result.sort((a, b) => getProductPriceInfo(a).price - getProductPriceInfo(b).price);
         break;
       case 'price-desc':
-        result.sort((a, b) => b.finalPrice - a.finalPrice);
+        result.sort((a, b) => getProductPriceInfo(b).price - getProductPriceInfo(a).price);
         break;
       case 'newest':
         result.sort((a, b) => new Date(b.created_date).getTime() - new Date(a.created_date).getTime());
@@ -113,7 +153,36 @@ export const productService = {
     return result;
   },
 
-  // ── Variant CRUD (admin only) ──────────────────────────────────────────────
+  // ── Admin: product state ───────────────────────────────────────────────────
+
+  async archiveProduct(productId: string): Promise<unknown> {
+    try {
+      const { data } = await api.patch(`/products/${productId}/archive`);
+      return data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Could not archive product.'));
+    }
+  },
+
+  async restoreProduct(productId: string): Promise<unknown> {
+    try {
+      const { data } = await api.patch(`/products/${productId}/restore`);
+      return data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Could not restore product.'));
+    }
+  },
+
+  async setPublished(productId: string, published: boolean): Promise<unknown> {
+    try {
+      const { data } = await api.patch(`/products/${productId}/${published ? 'publish' : 'unpublish'}`);
+      return data;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Could not update publish status.'));
+    }
+  },
+
+  // ── Admin: variants ────────────────────────────────────────────────────────
 
   async addVariant(productId: string, data: FormData): Promise<unknown> {
     try {
@@ -135,6 +204,19 @@ export const productService = {
     }
   },
 
+  async adjustVariantStock(
+    productId: string,
+    variantId: string,
+    payload: { stock: number } | { delta: number },
+  ): Promise<unknown> {
+    try {
+      const { data: res } = await api.patch(`/products/${productId}/variants/${variantId}/stock`, payload);
+      return res;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Could not update stock.'));
+    }
+  },
+
   async deleteVariant(productId: string, variantId: string): Promise<void> {
     try {
       await api.delete(`/products/${productId}/variants/${variantId}`);
@@ -153,6 +235,34 @@ export const productService = {
       return res;
     } catch (error) {
       throw new Error(getApiErrorMessage(error, 'Could not upload variant images.'));
+    }
+  },
+
+  async removeVariantImage(productId: string, variantId: string, url: string): Promise<unknown> {
+    try {
+      const { data: res } = await api.post(`/products/${productId}/variants/${variantId}/images/remove`, { url });
+      return res;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Could not remove image.'));
+    }
+  },
+
+  /** `images` = every current image URL of the variant, in the new order. */
+  async reorderVariantImages(productId: string, variantId: string, images: string[]): Promise<unknown> {
+    try {
+      const { data: res } = await api.patch(`/products/${productId}/variants/${variantId}/images/order`, { images });
+      return res;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Could not reorder images.'));
+    }
+  },
+
+  async setPrimaryVariantImage(productId: string, variantId: string, url: string): Promise<unknown> {
+    try {
+      const { data: res } = await api.patch(`/products/${productId}/variants/${variantId}/images/primary`, { url });
+      return res;
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, 'Could not set primary image.'));
     }
   },
 };

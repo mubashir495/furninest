@@ -1,12 +1,18 @@
-// src/components/admin/products/ProductViewModal.tsx
-
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { colors } from '@/config/colors';
 import { Product } from '@/Type/products';
+import {
+  Product as CatalogProduct,
+  getProductPriceInfo,
+  getTotalStock,
+  getVariantFinalPrice,
+  isVariantOnSale,
+} from '@/Type/product';
 import { formatCurrency, formatDate } from '@/utils/validators';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, X } from 'lucide-react';
 
 interface ProductViewModalProps {
   isOpen: boolean;
@@ -14,45 +20,36 @@ interface ProductViewModalProps {
   product: Product;
 }
 
-export default function ProductViewModal({
-  isOpen,
-  onClose,
-  product,
-}: ProductViewModalProps) {
+export default function ProductViewModal({ isOpen, onClose, product }: ProductViewModalProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   if (!isOpen) return null;
 
-  const getStatusColor = (status: string) => {
-    return status === 'active' 
-      ? { bg: colors.success[50], text: colors.success[700] }
-      : { bg: colors.error[50], text: colors.error[700] };
+  const catalog: CatalogProduct = {
+    ...(product as unknown as CatalogProduct),
+    finalPrice: product.finalPrice ?? product.price,
+    thumbnailImage: product.thumbnailImage || '',
+    created_date: product.created_date || product.createdAt || '',
+    updated_date: product.updated_date || product.updatedAt || '',
+    isActive: Boolean(product.isActive),
   };
-
-  const statusColors = getStatusColor(product.status ?? 'inactive');
-
+  const info = getProductPriceInfo(catalog);
+  const gallery = product.images?.length ? product.images : product.thumbnailImage ? [product.thumbnailImage] : [];
   const categoryName = typeof product.category === 'object' ? product.category.name : product.category;
   const subCategoryName = typeof product.subCategory === 'object' ? product.subCategory.name : product.subCategory;
+  const statusLabel = product.isArchived ? 'Archived' : product.isActive ? 'Published' : 'Unpublished';
 
   const nextImage = () => {
-    if (product.images && product.images.length > 0) {
-      setCurrentImageIndex((prev) => (prev + 1) % product.images.length);
-    }
+    if (gallery.length > 0) setCurrentImageIndex((prev) => (prev + 1) % gallery.length);
   };
-
   const prevImage = () => {
-    if (product.images && product.images.length > 0) {
-      setCurrentImageIndex((prev) => (prev - 1 + product.images.length) % product.images.length);
-    }
+    if (gallery.length > 0) setCurrentImageIndex((prev) => (prev - 1 + gallery.length) % gallery.length);
   };
 
   const styles = {
     overlay: {
       position: 'fixed' as const,
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
+      inset: 0,
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       backdropFilter: 'blur(4px)',
       display: 'flex',
@@ -65,7 +62,7 @@ export default function ProductViewModal({
       backgroundColor: colors.background,
       borderRadius: colors.radius.xl,
       width: '100%',
-      maxWidth: '600px',
+      maxWidth: '720px',
       maxHeight: '90vh',
       display: 'flex',
       flexDirection: 'column' as const,
@@ -79,284 +76,171 @@ export default function ProductViewModal({
       justifyContent: 'space-between',
       alignItems: 'center',
       backgroundColor: colors.surface,
-      flexShrink: 0,
     },
-    title: {
-      fontSize: '1.25rem',
-      fontWeight: 600,
-      color: colors.text.primary,
-    },
-    closeButton: {
-      padding: '0.5rem',
-      borderRadius: colors.radius.md,
-      border: 'none',
-      background: 'transparent',
-      cursor: 'pointer',
-      color: colors.text.secondary,
-      transition: 'all 0.2s',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    body: {
-      padding: '2rem',
-      overflowY: 'auto' as const,
-      flex: 1,
-    },
-    imageContainer: {
-      position: 'relative' as const,
-      width: '100%',
-      paddingTop: '75%',
-      backgroundColor: colors.surface,
-      borderRadius: colors.radius.lg,
-      overflow: 'hidden',
-      marginBottom: '1.5rem',
-    },
-    image: {
-      position: 'absolute' as const,
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      objectFit: 'contain' as const,
-    },
-    navButton: {
-      position: 'absolute' as const,
-      top: '50%',
-      transform: 'translateY(-50%)',
-      padding: '0.5rem',
-      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-      border: 'none',
-      borderRadius: '50%',
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      boxShadow: colors.shadow.md,
-      transition: 'all 0.2s',
-    },
-    navButtonLeft: {
-      left: '0.5rem',
-    },
-    navButtonRight: {
-      right: '0.5rem',
-    },
-    thumbnailContainer: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))',
-      gap: '0.5rem',
-      marginBottom: '1.5rem',
-    },
-    thumbnail: {
-      width: '100%',
-      aspectRatio: '1',
-      objectFit: 'cover' as const,
-      borderRadius: colors.radius.sm,
-      cursor: 'pointer',
-      border: `2px solid transparent`,
-      transition: 'all 0.2s',
-    },
-    thumbnailActive: {
-      borderColor: colors.primary[500],
-    },
+    body: { padding: '2rem', overflowY: 'auto' as const, flex: 1 },
     detail: {
       display: 'flex',
       justifyContent: 'space-between',
       padding: '0.75rem 0',
       borderBottom: `1px solid ${colors.border}`,
-      alignItems: 'center',
+      gap: '1rem',
     },
-    detailLabel: {
-      color: colors.text.secondary,
-      fontSize: '0.875rem',
-      fontWeight: 500,
-    },
-    detailValue: {
-      color: colors.text.primary,
-      fontSize: '0.875rem',
-      fontWeight: 400,
-      textAlign: 'right' as const,
-      wordBreak: 'break-word' as const,
-      maxWidth: '60%',
-    },
-    statusBadge: {
-      padding: '0.25rem 0.75rem',
-      borderRadius: colors.radius.full,
-      fontSize: '0.75rem',
-      fontWeight: 500,
-      display: 'inline-block',
-    },
-    description: {
-      marginTop: '1rem',
-      padding: '1rem',
-      backgroundColor: colors.surface,
-      borderRadius: colors.radius.md,
-      fontSize: '0.875rem',
-      color: colors.text.secondary,
-      lineHeight: 1.6,
-    },
-    noImages: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      width: '100%',
-      paddingTop: '75%',
-      backgroundColor: colors.surface,
-      borderRadius: colors.radius.lg,
-      marginBottom: '1.5rem',
-      color: colors.text.muted,
-      fontSize: '0.875rem',
-    },
+    label: { color: colors.text.secondary, fontSize: '0.875rem', fontWeight: 500 },
+    value: { color: colors.text.primary, fontSize: '0.875rem', textAlign: 'right' as const, maxWidth: '60%', wordBreak: 'break-word' as const },
   };
 
   return (
     <div style={styles.overlay} onClick={onClose}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div style={styles.header}>
-          <h2 style={styles.title}>Product Details</h2>
-          <button style={styles.closeButton} onClick={onClose}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: colors.text.primary }}>Product Details</h2>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: colors.text.secondary }}>
             <X size={20} />
           </button>
         </div>
 
         <div style={styles.body}>
-          {product.images && product.images.length > 0 ? (
+          {gallery.length > 0 ? (
             <>
-              <div style={styles.imageContainer}>
-                <img
-                  src={product.images[currentImageIndex]}
-                  alt={product.name}
-                  style={styles.image}
-                />
-                {product.images.length > 1 && (
+              <div style={{ position: 'relative', width: '100%', paddingTop: '60%', backgroundColor: colors.surface, borderRadius: colors.radius.lg, overflow: 'hidden', marginBottom: '1rem' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={gallery[currentImageIndex]} alt={product.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain' }} />
+                {gallery.length > 1 && (
                   <>
-                    <button
-                      onClick={prevImage}
-                      style={{
-                        ...styles.navButton,
-                        ...styles.navButtonLeft,
-                      }}
-                    >
+                    <button type="button" onClick={prevImage} aria-label="Previous image" style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', border: 'none', borderRadius: '50%', padding: 8, background: '#fff', cursor: 'pointer' }}>
                       <ChevronLeft size={20} />
                     </button>
-                    <button
-                      onClick={nextImage}
-                      style={{
-                        ...styles.navButton,
-                        ...styles.navButtonRight,
-                      }}
-                    >
+                    <button type="button" onClick={nextImage} aria-label="Next image" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', border: 'none', borderRadius: '50%', padding: 8, background: '#fff', cursor: 'pointer' }}>
                       <ChevronRight size={20} />
                     </button>
                   </>
                 )}
               </div>
-
-              <div style={styles.thumbnailContainer}>
-                {product.images.map((image: string, index: number) => (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 8, marginBottom: 16 }}>
+                {gallery.map((image, index) => (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    key={index}
+                    key={`${image}-${index}`}
                     src={image}
-                    alt={`${product.name} ${index + 1}`}
-                    style={{
-                      ...styles.thumbnail,
-                      ...(index === currentImageIndex ? styles.thumbnailActive : {}),
-                    }}
+                    alt=""
                     onClick={() => setCurrentImageIndex(index)}
+                    style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', borderRadius: 6, cursor: 'pointer', border: index === currentImageIndex ? `2px solid ${colors.primary[500]}` : '2px solid transparent' }}
                   />
                 ))}
               </div>
             </>
           ) : (
-            <div style={styles.noImages}>
+            <div style={{ padding: '3rem', textAlign: 'center', color: colors.text.muted, background: colors.surface, borderRadius: colors.radius.lg, marginBottom: 16 }}>
               No images available
             </div>
           )}
 
-          <div style={styles.detail}>
-            <span style={styles.detailLabel}>Product Name</span>
-            <span style={styles.detailValue}>{product.name}</span>
-          </div>
-
-          <div style={styles.detail}>
-            <span style={styles.detailLabel}>Category</span>
-            <span style={styles.detailValue}>{categoryName}</span>
-          </div>
-
-          <div style={styles.detail}>
-            <span style={styles.detailLabel}>Sub Category</span>
-            <span style={styles.detailValue}>{subCategoryName}</span>
-          </div>
-
-          <div style={styles.detail}>
-            <span style={styles.detailLabel}>Price</span>
-            <span style={styles.detailValue}>{formatCurrency(product.price)}</span>
-          </div>
-
-          {product.discount !== undefined && product.discount > 0 && (
-            <div style={styles.detail}>
-              <span style={styles.detailLabel}>Discount</span>
-              <span style={styles.detailValue}>{product.discount}%</span>
+          {product.slug && (
+            <div style={{ marginBottom: 16 }}>
+              <Link href={`/product/${product.slug}`} target="_blank" style={{ color: colors.primary[600], fontSize: 14, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                Preview on store <ExternalLink size={14} />
+              </Link>
             </div>
           )}
 
-          <div style={styles.detail}>
-            <span style={styles.detailLabel}>Final Price</span>
-            <span style={{ ...styles.detailValue, fontWeight: 600, color: colors.primary[600] }}>
-              {formatCurrency(product.finalPrice)}
-            </span>
-          </div>
+          {[
+            ['Product Name', product.name],
+            ['Slug', product.slug || '—'],
+            ['Brand', product.brand || '—'],
+            ['SKU', product.sku || '—'],
+            ['Category', categoryName || '—'],
+            ['Sub Category', subCategoryName || '—'],
+            ['Price', info.from ? `From ${formatCurrency(info.price)}` : formatCurrency(info.price)],
+            ['Base price', formatCurrency(product.price)],
+            ['Discount', product.discount ? `${product.discount}%` : '—'],
+            ['Total stock', String(getTotalStock(catalog))],
+            ['Status', statusLabel],
+            ['Featured', product.isFeatured ? 'Yes' : 'No'],
+            ['Material', product.material || '—'],
+            ['Dimensions', product.dimensions || '—'],
+            ['Care', product.careInstructions || '—'],
+            ['SEO title', product.seoTitle || '—'],
+            ['SEO description', product.seoDescription || '—'],
+            ['Created', product.createdAt || product.created_date ? formatDate(product.createdAt || product.created_date || '') : '—'],
+            ['Updated', product.updatedAt || product.updated_date ? formatDate(product.updatedAt || product.updated_date || '') : '—'],
+          ].map(([label, value]) => (
+            <div key={label} style={styles.detail}>
+              <span style={styles.label}>{label}</span>
+              <span style={styles.value}>{value}</span>
+            </div>
+          ))}
 
-          <div style={styles.detail}>
-            <span style={styles.detailLabel}>Stock</span>
-            <span style={{
-              ...styles.detailValue,
-              color: product.stock > 0 ? colors.success[700] : colors.error[700],
-              fontWeight: 500,
-            }}>
-              {product.stock} units
-            </span>
-          </div>
+          {product.features && product.features.length > 0 && (
+            <div style={{ marginTop: 16, padding: 16, background: colors.surface, borderRadius: 8 }}>
+              <strong style={{ display: 'block', marginBottom: 8 }}>Features</strong>
+              <ul style={{ margin: 0, paddingLeft: 18, color: colors.text.secondary, fontSize: 14 }}>
+                {product.features.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-          <div style={styles.detail}>
-            <span style={styles.detailLabel}>Status</span>
-            <span style={{
-              ...styles.statusBadge,
-              backgroundColor: statusColors.bg,
-              color: statusColors.text,
-            }}>
-              {(product.status ?? 'inactive').charAt(0).toUpperCase() + (product.status ?? 'inactive').slice(1)}
-
-            </span>
-          </div>
-
-          <div style={styles.detail}>
-            <span style={styles.detailLabel}>Created</span>
-            <span style={styles.detailValue}>{product.createdAt ? formatDate(product.createdAt) : '—'}</span>
-          </div>
-
-          <div style={styles.detail}>
-            <span style={styles.detailLabel}>Updated</span>
-            <span style={styles.detailValue}>{product.updatedAt ? formatDate(product.updatedAt) : '—'}</span>
-          </div>
-
+          {product.specifications && product.specifications.length > 0 && (
+            <div style={{ marginTop: 16, padding: 16, background: colors.surface, borderRadius: 8 }}>
+              <strong style={{ display: 'block', marginBottom: 8 }}>Specifications</strong>
+              {product.specifications.map((spec) => (
+                <div key={`${spec.label}-${spec.value}`} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, padding: '4px 0' }}>
+                  <span style={{ color: colors.text.secondary }}>{spec.label}</span>
+                  <span>{spec.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {product.shortDescription && (
-            <div style={styles.description}>
-              <strong style={{ display: 'block', marginBottom: '0.5rem', color: colors.text.primary }}>
-                Short Description
-              </strong>
+            <div style={{ marginTop: 16, padding: 16, background: colors.surface, borderRadius: 8, fontSize: 14, color: colors.text.secondary }}>
+              <strong style={{ display: 'block', marginBottom: 8, color: colors.text.primary }}>Short Description</strong>
               {product.shortDescription}
             </div>
           )}
 
           {product.longDescription && (
-            <div style={{ ...styles.description, marginTop: '1rem' }}>
-              <strong style={{ display: 'block', marginBottom: '0.5rem', color: colors.text.primary }}>
-                Long Description
-              </strong>
+            <div style={{ marginTop: 16, padding: 16, background: colors.surface, borderRadius: 8, fontSize: 14, color: colors.text.secondary }}>
+              <strong style={{ display: 'block', marginBottom: 8, color: colors.text.primary }}>Long Description</strong>
               {product.longDescription}
             </div>
+          )}
+
+          <h3 style={{ marginTop: 24, marginBottom: 12, fontSize: 16 }}>Variants ({product.variants?.length ?? 0})</h3>
+          {(product.variants ?? []).length === 0 ? (
+            <p style={{ color: colors.text.muted, fontSize: 14 }}>No variants yet.</p>
+          ) : (
+            (product.variants ?? []).map((variant) => (
+              <div key={variant._id} style={{ border: `1px solid ${colors.border}`, borderRadius: 10, padding: 16, marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+                  <strong>
+                    {variant.configName}
+                    {variant.colorName ? ` — ${variant.colorName}` : ''}
+                  </strong>
+                  <span style={{ fontSize: 12, color: variant.isActive ? colors.success[700] : colors.text.muted }}>
+                    {variant.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 14, color: colors.text.secondary }}>
+                  {formatCurrency(getVariantFinalPrice(variant))}
+                  {isVariantOnSale(variant) && (
+                    <span style={{ marginLeft: 8, textDecoration: 'line-through' }}>{formatCurrency(variant.price)}</span>
+                  )}
+                  {' · '}
+                  {variant.stock} in stock
+                  {variant.sku ? ` · SKU ${variant.sku}` : ''}
+                </div>
+                {variant.images?.length ? (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                    {variant.images.map((url) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img key={url} src={url} alt="" style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 6, border: `1px solid ${colors.border}` }} />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            ))
           )}
         </div>
       </div>

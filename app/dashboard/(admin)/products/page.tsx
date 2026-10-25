@@ -10,8 +10,8 @@ import ProductModal from '@/components/admin/product/ProductModal';
 import ProductViewModal from '@/components/admin/product/ProductViewModal';
 import ProductDeleteModal from '@/components/admin/product/ProductDeleteModal';
 import { useProducts } from '@/hooks/useProducts';
+import { productService } from '@/lib/productService';
 import { Product, ProductFormData } from '@/Type/products';
-
 
 export default function ProductsPage() {
   const {
@@ -20,16 +20,22 @@ export default function ProductsPage() {
     page,
     totalPages,
     search,
+    archived,
     setPage,
     setSearch,
+    setArchived,
     createProduct,
     updateProduct,
     deleteProduct,
+    restoreProduct,
+    publishProduct,
+    unpublishProduct,
   } = useProducts();
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [modalType, setModalType] = useState<'add' | 'edit' | 'view' | 'delete' | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
   const handleAdd = () => {
     setSelectedProduct(null);
@@ -39,11 +45,13 @@ export default function ProductsPage() {
   const handleEdit = (product: Product) => {
     setSelectedProduct(product);
     setModalType('edit');
+    productService.getProduct(product._id).then(setSelectedProduct).catch(() => undefined);
   };
 
   const handleView = (product: Product) => {
     setSelectedProduct(product);
     setModalType('view');
+    productService.getProduct(product._id).then(setSelectedProduct).catch(() => undefined);
   };
 
   const handleDelete = (product: Product) => {
@@ -57,20 +65,20 @@ export default function ProductsPage() {
   };
 
   const handleSubmit = async (data: ProductFormData, images: File[], thumbnail: File | null) => {
-  setModalLoading(true);
-  try {
-    if (modalType === 'add') {
-      await createProduct(data, images, thumbnail);
-    } else if (modalType === 'edit' && selectedProduct) {
-      await updateProduct(selectedProduct._id, data, images, thumbnail);
+    setModalLoading(true);
+    try {
+      if (modalType === 'add') {
+        await createProduct(data, images, thumbnail);
+      } else if (modalType === 'edit' && selectedProduct) {
+        await updateProduct(selectedProduct._id, data, images, thumbnail);
+      }
+      handleCloseModal();
+    } catch (error) {
+      console.error('Error submitting form:', error);
+    } finally {
+      setModalLoading(false);
     }
-    handleCloseModal();
-  } catch (error) {
-    console.error('Error submitting form:', error);
-  } finally {
-    setModalLoading(false);
-  }
-};
+  };
 
   const handleConfirmDelete = async () => {
     if (selectedProduct) {
@@ -79,36 +87,24 @@ export default function ProductsPage() {
         await deleteProduct(selectedProduct._id);
         handleCloseModal();
       } catch (error) {
-        console.error('Error deleting product:', error);
+        console.error('Error archiving product:', error);
       } finally {
         setModalLoading(false);
       }
     }
   };
 
-  const pageStyles = {
-    container: {
-      padding: '2rem',
-      maxWidth: '1400px',
-      margin: '0 auto',
-    },
-    header: {
-      marginBottom: '2rem',
-    },
-    title: {
-      fontSize: '1.875rem',
-      fontWeight: 700,
-      color: colors.text.primary,
-      marginBottom: '0.5rem',
-    },
-    subtitle: {
-      color: colors.text.secondary,
-      fontSize: '0.875rem',
-    },
+  const runRowAction = async (product: Product, action: () => Promise<void>) => {
+    setActionLoadingId(product._id);
+    try {
+      await action();
+    } finally {
+      setActionLoadingId(null);
+    }
   };
 
   return (
-    <div style={pageStyles.container}>
+    <div style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
       <Toaster
         position="top-right"
         toastOptions={{
@@ -137,9 +133,11 @@ export default function ProductsPage() {
         }}
       />
 
-      <div style={pageStyles.header}>
-        <h1 style={pageStyles.title}>Product Management</h1>
-        <p style={pageStyles.subtitle}>
+      <div style={{ marginBottom: '2rem' }}>
+        <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: colors.text.primary, marginBottom: '0.5rem' }}>
+          Product Management
+        </h1>
+        <p style={{ color: colors.text.secondary, fontSize: '0.875rem' }}>
           Manage your product inventory, categories, and pricing
         </p>
       </div>
@@ -151,11 +149,17 @@ export default function ProductsPage() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onAdd={handleAdd}
+        onPublish={(product) => runRowAction(product, () => publishProduct(product._id))}
+        onUnpublish={(product) => runRowAction(product, () => unpublishProduct(product._id))}
+        onRestore={(product) => runRowAction(product, () => restoreProduct(product._id))}
         search={search}
         onSearchChange={setSearch}
         page={page}
         totalPages={totalPages}
         onPageChange={setPage}
+        archived={archived}
+        onArchivedChange={setArchived}
+        actionLoadingId={actionLoadingId}
       />
 
       {(modalType === 'add' || modalType === 'edit') && (
@@ -169,11 +173,7 @@ export default function ProductsPage() {
       )}
 
       {modalType === 'view' && selectedProduct && (
-        <ProductViewModal
-          isOpen={true}
-          onClose={handleCloseModal}
-          product={selectedProduct}
-        />
+        <ProductViewModal isOpen={true} onClose={handleCloseModal} product={selectedProduct} />
       )}
 
       {modalType === 'delete' && selectedProduct && (

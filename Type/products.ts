@@ -44,13 +44,25 @@ export interface Product {
   material?: string;
   dimensions?: string;
   weight?: string;
+  careInstructions?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  features?: string[];
+  specifications?: { label: string; value: string }[];
 
   featured?: boolean;
+  isFeatured?: boolean;
+  isActive?: boolean;
+  isArchived?: boolean;
+  inStock?: boolean;
+  startingPrice?: number;
   status?: "active" | "inactive";
 
   /** Variant sub-documents (populated on full product fetch) */
   variants?: import('./product').ProductVariant[];
 
+  created_date?: string;
+  updated_date?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -97,8 +109,14 @@ export interface ProductFormData {
   material?: string;
   dimensions?: string;
   weight?: string;
+  careInstructions?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  features?: string[];
+  specifications?: { label: string; value: string }[];
 
   featured?: boolean;
+  isFeatured?: boolean;
   isActive?: boolean;
   status?: "active" | "inactive";
 }

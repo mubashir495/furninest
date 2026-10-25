@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { colors } from '@/config/colors';
-import { AlertTriangle, X, Trash2, Loader2 } from 'lucide-react';
+import { Archive, X, Loader2 } from 'lucide-react';
 
 interface ProductDeleteModalProps {
   isOpen: boolean;
@@ -66,7 +66,6 @@ export default function ProductDeleteModal({
       background: 'transparent',
       cursor: 'pointer',
       color: colors.text.secondary,
-      transition: 'all 0.2s',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
@@ -81,9 +80,9 @@ export default function ProductDeleteModal({
     },
     icon: {
       padding: '1rem',
-      backgroundColor: colors.error[50],
+      backgroundColor: colors.warning[50],
       borderRadius: '50%',
-      color: colors.error[500],
+      color: colors.warning[500],
     },
     message: {
       textAlign: 'center' as const,
@@ -101,7 +100,7 @@ export default function ProductDeleteModal({
     },
     productName: {
       fontWeight: 600,
-      color: colors.error[700],
+      color: colors.warning[700],
     },
     footer: {
       padding: '1.5rem 2rem',
@@ -117,7 +116,6 @@ export default function ProductDeleteModal({
       border: 'none',
       cursor: 'pointer',
       fontWeight: 500,
-      transition: 'all 0.2s',
       display: 'flex',
       alignItems: 'center',
       gap: '0.5rem',
@@ -128,7 +126,7 @@ export default function ProductDeleteModal({
       border: `1px solid ${colors.border}`,
     },
     buttonDanger: {
-      backgroundColor: colors.error[500],
+      backgroundColor: colors.warning[500],
       color: 'white',
     },
     buttonDisabled: {
@@ -138,11 +136,11 @@ export default function ProductDeleteModal({
   };
 
   return (
-    <div style={styles.overlay} onClick={onClose}>
+    <div style={styles.overlay}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div style={styles.header}>
-          <h3 style={styles.title}>Delete Product</h3>
-          <button style={styles.closeButton} onClick={onClose}>
+          <h3 style={styles.title}>Archive Product</h3>
+          <button style={styles.closeButton} onClick={onClose} disabled={loading} aria-label="Close">
             <X size={20} />
           </button>
         </div>
@@ -150,16 +148,16 @@ export default function ProductDeleteModal({
         <div style={styles.body}>
           <div style={styles.iconContainer}>
             <div style={styles.icon}>
-              <AlertTriangle size={32} />
+              <Archive size={32} />
             </div>
           </div>
 
           <div style={styles.message}>
             <p style={styles.messageText}>
-              Are you sure you want to delete <span style={styles.productName}>"{productName}"</span>?
+              Archive <span style={styles.productName}>&quot;{productName}&quot;</span>?
             </p>
             <p style={styles.messageSubtext}>
-              This action cannot be undone. All product data will be permanently removed.
+              Hidden from the store, kept for order history. You can restore it later. This does not permanently delete the product.
             </p>
           </div>
         </div>
@@ -167,10 +165,7 @@ export default function ProductDeleteModal({
         <div style={styles.footer}>
           <button
             onClick={onClose}
-            style={{
-              ...styles.button,
-              ...styles.buttonSecondary,
-            }}
+            style={{ ...styles.button, ...styles.buttonSecondary }}
             disabled={loading}
           >
             Cancel
@@ -187,12 +182,12 @@ export default function ProductDeleteModal({
             {loading ? (
               <>
                 <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
-                Deleting...
+                Archiving...
               </>
             ) : (
               <>
-                <Trash2 size={18} />
-                Delete Product
+                <Archive size={18} />
+                Archive Product
               </>
             )}
           </button>

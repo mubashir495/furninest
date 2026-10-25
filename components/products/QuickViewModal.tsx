@@ -3,7 +3,15 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Product, getCategoryName } from '@/Type/product';
+import {
+  Product,
+  getCategoryName,
+  getProductGallery,
+  getProductInStock,
+  getProductPriceInfo,
+  getColorSwatches,
+  hasVariants,
+} from '@/Type/product';
 import { useCartStore } from '@/store/cartStore';
 import { useAuth } from '@/context/AuthContext';
 import { QuantitySelector } from '@/components/ui/QuantitySelector';
@@ -25,10 +33,18 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
   const { isAuthenticated } = useAuth();
   const addItem = useCartStore((s) => s.addItem);
 
-  const gallery = product.images.length > 0 ? product.images : [product.thumbnailImage].filter(Boolean);
-  const onSale = product.discount > 0;
+  const gallery = getProductGallery(product);
+  const info = getProductPriceInfo(product);
+  const variantMode = hasVariants(product);
+  const inStock = getProductInStock(product);
+  const onSale = info.original !== null;
 
   const handleAddToCart = async () => {
+    if (variantMode) {
+      onClose();
+      router.push(`/product/${product.slug}`);
+      return;
+    }
     if (!isAuthenticated) {
       toast.info('Please log in to add items to your cart.');
       onClose();
@@ -63,7 +79,7 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
             <div className="absolute top-4 left-4 z-10 flex gap-2">
               {onSale && (
                 <span className="bg-accent text-accent-foreground text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-full">
-                  -{product.discount}%
+                  -{info.discountPct}%
                 </span>
               )}
             </div>
@@ -105,15 +121,29 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
             <h2 className="text-3xl font-serif text-primary mb-2 leading-tight pr-8">{product.name}</h2>
 
             <div className="text-2xl font-bold text-primary mb-6 flex items-center gap-3">
-              {formatCurrency(product.finalPrice)}
-              {onSale && <span className="text-lg line-through text-muted-foreground">{formatCurrency(product.price)}</span>}
+              {(info.from || variantMode) && <span className="text-sm font-medium text-muted-foreground">From</span>}
+              {formatCurrency(info.price)}
+              {onSale && <span className="text-lg line-through text-muted-foreground">{formatCurrency(info.original as number)}</span>}
             </div>
 
-            <p className="text-muted-foreground text-sm mb-8 leading-relaxed line-clamp-3">{product.shortDescription}</p>
+            <p className="text-muted-foreground text-sm mb-6 leading-relaxed line-clamp-3">{product.shortDescription}</p>
+
+            {variantMode && getColorSwatches(product).length > 0 && (
+              <div className="flex items-center gap-1.5 mb-8" aria-label="Available colours">
+                {getColorSwatches(product).slice(0, 8).map((s) => (
+                  <span
+                    key={s.name}
+                    title={s.name}
+                    className="h-5 w-5 rounded-full border border-border"
+                    style={{ backgroundColor: s.hex }}
+                  />
+                ))}
+              </div>
+            )}
 
             <div className="mt-auto pt-6 border-t border-border">
               <div className="flex gap-4">
-                <div className="w-32">
+                <div className={variantMode ? 'hidden' : 'w-32'}>
                   <QuantitySelector
                     quantity={quantity}
                     onIncrease={() => setQuantity((q) => Math.min(product.stock, q + 1))}
@@ -124,10 +154,10 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
                 </div>
                 <button
                   onClick={handleAddToCart}
-                  disabled={product.stock === 0 || isAdding}
+                  disabled={!inStock || isAdding}
                   className="flex-1 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50"
                 >
-                  {product.stock === 0 ? 'Out of Stock' : isAdding ? 'Adding…' : 'Add to Cart'}
+                  {!inStock ? 'Out of Stock' : variantMode ? 'Choose options' : isAdding ? 'Adding…' : 'Add to Cart'}
                 </button>
               </div>
             </div>

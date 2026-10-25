@@ -3,7 +3,15 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Heart, ShoppingCart } from 'lucide-react';
-import { Product, getCategoryName } from '@/Type/product';
+import {
+  Product,
+  getCategoryName,
+  getColorSwatches,
+  getProductImage,
+  getProductInStock,
+  getProductPriceInfo,
+  hasVariants,
+} from '@/Type/product';
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { useAuth } from '@/context/AuthContext';
@@ -26,12 +34,21 @@ export function ProductCard({ product }: { product: Product }) {
   const toggleWishlist = useWishlistStore((s) => s.toggle);
   const isWishlisted = useWishlistStore((s) => s.isInWishlist(product._id));
 
-  const image = product.thumbnailImage || product.images[0] || '/window.svg';
-  const onSale = product.discount > 0;
+  const info = getProductPriceInfo(product);
+  const variantMode = hasVariants(product);
+  const inStock = getProductInStock(product);
+  const image = getProductImage(product);
+  const swatches = getColorSwatches(product);
+  const onSale = info.original !== null;
 
   const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (variantMode) {
+      // Variant products need a configuration/colour — send the customer to the product page
+      router.push(`/product/${product.slug}`);
+      return;
+    }
     if (!isAuthenticated) {
       toast.info('Please log in to add items to your cart.');
       router.push('/auth/login');
@@ -107,7 +124,7 @@ export function ProductCard({ product }: { product: Product }) {
               )}
               {onSale && (
                 <span className="bg-accent text-accent-foreground text-[10px] font-bold uppercase tracking-wider rounded-full px-2.5 py-1">
-                  -{product.discount}%
+                  -{info.discountPct}%
                 </span>
               )}
             </div>
@@ -129,21 +146,38 @@ export function ProductCard({ product }: { product: Product }) {
             <p className="text-sm text-muted-foreground line-clamp-1 mb-4">{product.shortDescription}</p>
           )}
 
+          {swatches.length > 0 && (
+            <div className="flex items-center gap-1.5 mb-3" aria-label="Available colours">
+              {swatches.slice(0, 5).map((s) => (
+                <span
+                  key={s.name}
+                  title={s.name}
+                  className="h-4 w-4 rounded-full border border-border"
+                  style={{ backgroundColor: s.hex }}
+                />
+              ))}
+              {swatches.length > 5 && <span className="text-xs text-muted-foreground">+{swatches.length - 5}</span>}
+            </div>
+          )}
+
           <div className="mt-auto flex items-center justify-between gap-3">
             <div className="flex flex-col leading-tight">
               {onSale && (
-                <span className="text-xs line-through text-muted-foreground">{formatCurrency(product.price)}</span>
+                <span className="text-xs line-through text-muted-foreground">{formatCurrency(info.original as number)}</span>
               )}
-              <span className="text-xl font-bold text-primary">{formatCurrency(product.finalPrice)}</span>
+              <span className="text-xl font-bold text-primary">
+                {(info.from || variantMode) && <span className="text-xs font-medium text-muted-foreground mr-1">From</span>}
+                {formatCurrency(info.price)}
+              </span>
             </div>
 
             <button
               onClick={handleAddToCart}
-              disabled={product.stock === 0 || isAdding}
+              disabled={!inStock || isAdding}
               className="flex items-center gap-1.5 bg-primary text-primary-foreground pl-4 pr-5 py-2.5 rounded-full font-medium text-sm hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 shrink-0"
             >
               <ShoppingCart size={16} />
-              {product.stock === 0 ? 'Sold Out' : isAdding ? '…' : 'Add'}
+              {!inStock ? 'Sold Out' : variantMode ? 'Options' : isAdding ? '…' : 'Add'}
             </button>
           </div>
         </div>
