@@ -2,24 +2,36 @@ import axios, {
   AxiosError,
   InternalAxiosRequestConfig,
 } from 'axios';
+import Cookies from 'js-cookie';
 
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000/api';
+function normalizeApiUrl(raw?: string): string {
+  if (!raw) return 'http://localhost:3000/api';
+  const trimmed = raw.replace(/\/+$/, '');
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+}
 
-const ACCESS_TOKEN_KEY = 'furninest_access_token';
-const REFRESH_TOKEN_KEY = 'furninest_refresh_token';
-const USER_KEY = 'furninest_user';
+export const API_URL = normalizeApiUrl(
+  process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL,
+);
+
+export const ACCESS_TOKEN_KEY = 'furninest_access_token';
+export const REFRESH_TOKEN_KEY = 'furninest_refresh_token';
+export const USER_KEY = 'furninest_user';
+
+export const AUTH_COOKIE_NAME = 'furninest_token';
+export const REFRESH_COOKIE_NAME = 'furninest_refresh_token';
+export const USER_ROLE_COOKIE_NAME = 'furninest_role';
 
 // ---------------- Session ----------------
 
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
+  return localStorage.getItem(ACCESS_TOKEN_KEY) || Cookies.get(AUTH_COOKIE_NAME) || null;
 }
 
 export function getRefreshToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
+  return localStorage.getItem(REFRESH_TOKEN_KEY) || Cookies.get(REFRESH_COOKIE_NAME) || null;
 }
 
 export function saveSession(
@@ -30,11 +42,23 @@ export function saveSession(
 
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+
+  // Set cookies for Next.js server-side / Edge middleware (7 days)
+  Cookies.set(AUTH_COOKIE_NAME, accessToken, { expires: 7, sameSite: 'lax', path: '/' });
+  Cookies.set(REFRESH_COOKIE_NAME, refreshToken, { expires: 7, sameSite: 'lax', path: '/' });
 }
 
 export function saveUser(user: unknown) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(USER_KEY, JSON.stringify(user));
+
+  if (user && typeof user === 'object' && 'role' in user) {
+    const role = (user as { role: string }).role;
+    Cookies.set(USER_ROLE_COOKIE_NAME, role, { expires: 7, sameSite: 'lax', path: '/' });
+    if (role === 'ADMIN') {
+      Cookies.set('admin_authed', '1', { expires: 7, sameSite: 'lax', path: '/' });
+    }
+  }
 }
 
 export function getStoredUser<T = unknown>(): T | null {
@@ -50,6 +74,11 @@ export function clearSession() {
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+
+  Cookies.remove(AUTH_COOKIE_NAME, { path: '/' });
+  Cookies.remove(REFRESH_COOKIE_NAME, { path: '/' });
+  Cookies.remove(USER_ROLE_COOKIE_NAME, { path: '/' });
+  Cookies.remove('admin_authed', { path: '/' });
 }
 
 function emitSessionExpired() {

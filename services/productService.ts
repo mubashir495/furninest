@@ -102,22 +102,24 @@ export const productService = {
   },
 
   applyFilters(products: Product[], filter: ProductFilter): Product[] {
-    let result = [...products];
+    let result = Array.isArray(products) ? [...products].filter((p): p is Product => Boolean(p && p._id)) : [];
 
     if (filter.search) {
       result = this.searchProducts(result, filter.search);
     }
     if (filter.categoryId) {
-      result = result.filter((p) =>
-        typeof p.category === 'string' ? p.category === filter.categoryId : p.category._id === filter.categoryId,
-      );
+      result = result.filter((p) => {
+        if (!p.category) return false;
+        const catId = typeof p.category === 'string' ? p.category : (p.category as any)?._id || (p.category as any)?.id;
+        return catId && String(catId) === String(filter.categoryId);
+      });
     }
     if (filter.subCategoryId) {
-      result = result.filter((p) =>
-        typeof p.subCategory === 'string'
-          ? p.subCategory === filter.subCategoryId
-          : p.subCategory._id === filter.subCategoryId,
-      );
+      result = result.filter((p) => {
+        if (!p.subCategory) return false;
+        const subId = typeof p.subCategory === 'string' ? p.subCategory : (p.subCategory as any)?._id || (p.subCategory as any)?.id;
+        return subId && String(subId) === String(filter.subCategoryId);
+      });
     }
     // Prices / stock / sale are variant-aware (cheapest active variant for variant products)
     if (filter.minPrice !== undefined) {

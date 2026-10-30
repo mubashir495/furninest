@@ -29,10 +29,28 @@ export function VariantSelector({ variants, onVariantChange, initialVariantId }:
       getAvailableColors(variants, initialVariant?.configName ?? configs[0])[0]?.colorName,
   );
 
+  // Sync if selectedConfig is no longer valid
+  useEffect(() => {
+    if (configs.length > 0 && !configs.includes(selectedConfig)) {
+      const nextConfig = configs[0];
+      setSelectedConfig(nextConfig);
+      const colorsForConfig = getAvailableColors(variants, nextConfig);
+      setSelectedColor(colorsForConfig[0]?.colorName);
+    }
+  }, [configs, selectedConfig, variants]);
+
   const colorVariants = getAvailableColors(variants, selectedConfig);
   const hasColors = colorVariants.length > 0;
+  const directMatch = selectedConfig ? findVariant(variants, selectedConfig, selectedColor) : null;
+  const activeVariant =
+    directMatch ??
+    (selectedConfig ? variants.find((v) => v.isActive && v.configName === selectedConfig) ?? null : null);
 
-  const activeVariant = selectedConfig ? findVariant(variants, selectedConfig, selectedColor) : null;
+  useEffect(() => {
+    if (activeVariant && activeVariant.colorName !== selectedColor) {
+      setSelectedColor(activeVariant.colorName);
+    }
+  }, [activeVariant, selectedColor]);
 
   useEffect(() => {
     onVariantChange(activeVariant ?? null);
@@ -43,38 +61,38 @@ export function VariantSelector({ variants, onVariantChange, initialVariantId }:
     setSelectedConfig(config);
     const colorsForConfig = getAvailableColors(variants, config);
     const stillValid = colorsForConfig.some((v) => v.colorName === selectedColor);
-    if (!stillValid) setSelectedColor(colorsForConfig[0]?.colorName);
+    if (!stillValid) {
+      setSelectedColor(colorsForConfig[0]?.colorName);
+    }
   };
 
   if (!configs.length) return null;
 
   return (
     <div className="flex flex-col gap-5">
-      {/* ── Configuration pills ───────────────────────────────────────── */}
+      {/* ── Configuration pills ─────────────────────────────────────────── */}
       <div>
-        <p className="text-[12px] font-semibold uppercase tracking-wider text-[#888] mb-2.5">
+        <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
           Choose Configuration
         </p>
         <div className="flex flex-wrap gap-2">
           {configs.map((config) => {
             const isSelected = selectedConfig === config;
-            const comboOk =
-              !hasColors ||
-              !selectedColor ||
-              Boolean(findVariant(variants, config, selectedColor));
+            const configVariants = variants.filter((v) => v.isActive && v.configName === config);
+            const isOutOfStock = configVariants.length > 0 && configVariants.every((v) => v.stock <= 0);
+
             return (
               <button
                 key={config}
                 type="button"
-                onClick={() => comboOk && handleConfigSelect(config)}
-                disabled={!comboOk}
+                onClick={() => handleConfigSelect(config)}
                 aria-pressed={isSelected}
-                className={`px-4 py-2 rounded-full text-[13px] font-medium border transition-all whitespace-nowrap ${
-                  !comboOk
-                    ? 'opacity-35 cursor-not-allowed border-[#e8e2d9] text-[#999]'
-                    : isSelected
-                    ? 'bg-[#1a1a1a] text-white border-[#1a1a1a]'
-                    : 'bg-white text-[#333] border-[#d0c9be] hover:border-[#1a1a1a]'
+                className={`px-4 py-2 rounded-full text-[13px] font-medium border transition-all whitespace-nowrap cursor-pointer ${
+                  isSelected
+                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                    : isOutOfStock
+                      ? 'bg-surface text-muted-foreground border-border hover:border-primary opacity-60'
+                      : 'bg-surface text-foreground border-border hover:border-primary'
                 }`}
               >
                 {config}
@@ -84,10 +102,10 @@ export function VariantSelector({ variants, onVariantChange, initialVariantId }:
         </div>
       </div>
 
-      {/* ── Colour swatches ───────────────────────────────────────────── */}
+      {/* ── Colour swatches ─────────────────────────────────────────────── */}
       {hasColors && (
         <div>
-          <p className="text-[12px] font-semibold uppercase tracking-wider text-[#888] mb-2.5">
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">
             Choose Color
           </p>
           <div className="flex flex-wrap items-center gap-3">
@@ -107,8 +125,8 @@ export function VariantSelector({ variants, onVariantChange, initialVariantId }:
                   <span
                     className={`relative w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                       isSelected
-                        ? 'border-[#1a1a1a] ring-2 ring-[#1a1a1a] ring-offset-1'
-                        : 'border-white ring-1 ring-[#ccc]'
+                        ? 'border-primary ring-2 ring-primary ring-offset-1 ring-offset-surface'
+                        : 'border-border ring-1 ring-border'
                     }`}
                     style={{ backgroundColor: v.colorHex ?? v.colorName ?? '#ccc' }}
                   >
@@ -119,7 +137,7 @@ export function VariantSelector({ variants, onVariantChange, initialVariantId }:
                     )}
                   </span>
                   {v.colorName && (
-                    <span className={`text-[12px] ${isSelected ? 'font-semibold text-[#1a1a1a]' : 'text-[#666]'}`}>
+                    <span className={`text-[12px] ${isSelected ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
                       {v.colorName}
                     </span>
                   )}
@@ -130,9 +148,9 @@ export function VariantSelector({ variants, onVariantChange, initialVariantId }:
         </div>
       )}
 
-      {/* ── No combo warning ─────────────────────────────────────────── */}
+      {/* ── No combo warning ─────────────────────────────────────────────── */}
       {selectedConfig && !activeVariant && (
-        <p className="text-[12px] text-[#e8453c]">
+        <p className="text-[12px] text-destructive">
           This combination is not available. Please choose a different option.
         </p>
       )}

@@ -8,7 +8,7 @@ import { NewsletterForm } from '@/components/home/NewsletterForm';
 import { TrustBadges } from '@/components/comman/TrustBadges';
 import { ProductCarousel } from '@/components/products/ProductCarousel';
 
-export const revalidate = 300; // ISR: catalog rebuilds at most every 5 minutes
+export const revalidate = 3600; // ISR: catalog rebuilds at most every 1 hour or on-demand
 
 export const metadata: Metadata = {
   title: 'LUXA FURNITURE — Premium Furniture for Every UK Home',

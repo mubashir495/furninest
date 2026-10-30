@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Heart, ShoppingCart } from 'lucide-react';
 import {
@@ -28,11 +28,18 @@ function isNewProduct(createdDate: string) {
 export function ProductCard({ product }: { product: Product }) {
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  // Defer "New" badge to client-only to avoid hydration mismatch from Date.now()
+  const [isNew, setIsNew] = useState(false);
   const router = useRouter();
   const { isAuthenticated } = useAuth();
   const addItem = useCartStore((s) => s.addItem);
   const toggleWishlist = useWishlistStore((s) => s.toggle);
   const isWishlisted = useWishlistStore((s) => s.isInWishlist(product._id));
+
+  // Run only on client so SSR HTML matches initial client render
+  useEffect(() => {
+    setIsNew(isNewProduct(product.created_date));
+  }, [product.created_date]);
 
   const info = getProductPriceInfo(product);
   const variantMode = hasVariants(product);
@@ -117,7 +124,8 @@ export function ProductCard({ product }: { product: Product }) {
             </div>
 
             <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-              {isNewProduct(product.created_date) && (
+              {/* isNew is only set after mount — avoids SSR/client Date.now() mismatch */}
+              {isNew && (
                 <span className="bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider rounded-full px-2.5 py-1">
                   New
                 </span>
@@ -160,12 +168,12 @@ export function ProductCard({ product }: { product: Product }) {
             </div>
           )}
 
-          <div className="mt-auto flex items-center justify-between gap-3">
-            <div className="flex flex-col leading-tight">
+          <div className="mt-auto flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex flex-col leading-tight min-w-0">
               {onSale && (
                 <span className="text-xs line-through text-muted-foreground">{formatCurrency(info.original as number)}</span>
               )}
-              <span className="text-xl font-bold text-primary">
+              <span className="text-base font-bold text-primary truncate">
                 {(info.from || variantMode) && <span className="text-xs font-medium text-muted-foreground mr-1">From</span>}
                 {formatCurrency(info.price)}
               </span>
@@ -174,9 +182,9 @@ export function ProductCard({ product }: { product: Product }) {
             <button
               onClick={handleAddToCart}
               disabled={!inStock || isAdding}
-              className="flex items-center gap-1.5 bg-primary text-primary-foreground pl-4 pr-5 py-2.5 rounded-full font-medium text-sm hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 shrink-0"
+              className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-full font-medium text-sm hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 shrink-0"
             >
-              <ShoppingCart size={16} />
+              <ShoppingCart size={15} />
               {!inStock ? 'Sold Out' : variantMode ? 'Options' : isAdding ? '…' : 'Add'}
             </button>
           </div>

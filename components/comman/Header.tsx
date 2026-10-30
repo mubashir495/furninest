@@ -33,7 +33,7 @@ export function Header() {
   const wishlistItems = useWishlistStore((state) => state.items);
   const { isAuthenticated } = useAuth();
 
-  const { mode, setMode, customTheme, setCustomTheme, isDark } = useTheme();
+  const { mode, setMode, customTheme, setCustomTheme, isDark, mounted } = useTheme();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -129,7 +129,7 @@ export function Header() {
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-2">
+            <nav className="hidden md:flex items-center gap-2" suppressHydrationWarning>
               {navLinks.map((link) => (
                 <div
                   key={link.name}
@@ -186,7 +186,7 @@ export function Header() {
             </nav>
 
             {/* Right icons */}
-            <div className="flex items-center gap-2 md:gap-4 text-primary">
+            <div className="flex items-center gap-2 md:gap-4 text-primary" suppressHydrationWarning>
               {/* Search */}
               <button
                 onClick={() => setIsSearchOpen(!isSearchOpen)}
@@ -201,7 +201,7 @@ export function Header() {
                   onClick={() => setIsThemeDropdownOpen(!isThemeDropdownOpen)}
                   className="p-2 hover:bg-muted rounded-full transition-colors flex items-center gap-1"
                 >
-                  {isDark ? <Moon size={20} /> : <Sun size={20} />}
+                  {mounted && isDark ? <Moon size={20} /> : <Sun size={20} />}
                   <ChevronDown size={14} className="opacity-50" />
                 </button>
                 {isThemeDropdownOpen && (
@@ -215,7 +215,7 @@ export function Header() {
                             setIsThemeDropdownOpen(false);
                           }}
                           className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
-                            mode === opt.value ? 'bg-accent/20 text-accent' : 'hover:bg-white/10'
+                            mounted && mode === opt.value ? 'bg-accent/20 text-accent' : 'hover:bg-white/10'
                           }`}
                         >
                           {opt.icon}
@@ -252,7 +252,7 @@ export function Header() {
               {/* Wishlist */}
               <Link href="/wishlist" className="relative p-2 hover:bg-muted rounded-full transition-colors">
                 <Heart size={20} />
-                {wishlistItems.length > 0 && (
+                {mounted && wishlistItems.length > 0 && (
                   <span className="absolute top-0 right-0 bg-accent text-accent-foreground text-[10px] font-medium w-4 h-4 rounded-full flex items-center justify-center">
                     {wishlistItems.length}
                   </span>
@@ -262,7 +262,7 @@ export function Header() {
               {/* Cart */}
               <Link href="/cart" className="relative p-2 hover:bg-muted rounded-full transition-colors">
                 <ShoppingBag size={20} />
-                {itemCount > 0 && (
+                {mounted && itemCount > 0 && (
                   <span className="absolute top-0 right-0 bg-accent text-accent-foreground text-[10px] font-medium w-4 h-4 rounded-full flex items-center justify-center">
                     {itemCount}
                   </span>
@@ -288,7 +288,7 @@ export function Header() {
                     placeholder="Search for furniture..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-white/50 dark:bg-black/50 border-white/20 h-12 rounded-2xl pr-12"
+                    className="w-full bg-surface/50 border-border h-12 rounded-2xl pr-12"
                     autoFocus
                   />
                   <button
@@ -336,7 +336,7 @@ export function Header() {
                       setIsMobileMenuOpen(false);
                     }}
                     className={`flex items-center gap-3 text-xl font-medium transition-colors ${
-                      mode === opt.value ? 'text-accent' : 'text-primary'
+                      mounted && mode === opt.value ? 'text-accent' : 'text-primary'
                     }`}
                   >
                     {opt.icon}

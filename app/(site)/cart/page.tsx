@@ -61,18 +61,18 @@ export default function CartPage() {
 
   const savings = items.reduce((sum, i) => sum + (i.product.price - i.price) * i.quantity, 0);
 
-  async function handleUpdate(productId: string, quantity: number) {
+  async function handleUpdate(productId: string, variantId: string | undefined, quantity: number) {
     if (quantity < 1) return;
     try {
-      await updateItem(productId, quantity);
+      await updateItem(productId, quantity, variantId);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not update quantity.');
     }
   }
 
-  async function handleRemove(productId: string) {
+  async function handleRemove(productId: string, variantId: string | undefined) {
     try {
-      await removeItem(productId);
+      await removeItem(productId, variantId);
       toast.success('Item removed');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not remove item.');
@@ -128,8 +128,8 @@ export default function CartPage() {
                 <div className="col-span-1 md:col-span-3 flex justify-start md:justify-center">
                   <QuantitySelector
                     quantity={item.quantity}
-                    onIncrease={() => handleUpdate(item.product._id, item.quantity + 1)}
-                    onDecrease={() => handleUpdate(item.product._id, item.quantity - 1)}
+                    onIncrease={() => handleUpdate(item.product._id, item.variantId, item.quantity + 1)}
+                    onDecrease={() => handleUpdate(item.product._id, item.variantId, item.quantity - 1)}
                     max={item.product.stock}
                     className="h-10 rounded-xl"
                   />
@@ -141,7 +141,7 @@ export default function CartPage() {
 
                 <div className="col-span-1 flex justify-end">
                   <button
-                    onClick={() => handleRemove(item.product._id)}
+                    onClick={() => handleRemove(item.product._id, item.variantId)}
                     className="w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-colors"
                   >
                     <Trash2 size={18} />

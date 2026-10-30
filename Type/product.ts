@@ -100,10 +100,12 @@ export interface ProductFilter {
 }
 
 export function getCategoryName(product: Product): string {
+  if (!product || !product.category) return '';
   return typeof product.category === 'string' ? '' : product.category?.name ?? '';
 }
 
 export function getSubCategoryName(product: Product): string {
+  if (!product || !product.subCategory) return '';
   return typeof product.subCategory === 'string' ? '' : product.subCategory?.name ?? '';
 }
 

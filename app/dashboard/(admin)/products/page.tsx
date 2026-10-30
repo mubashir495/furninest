@@ -33,7 +33,7 @@ export default function ProductsPage() {
   } = useProducts();
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [modalType, setModalType] = useState<'add' | 'edit' | 'view' | 'delete' | null>(null);
+  const [modalType, setModalType] = useState<'add' | 'edit' | 'view' | 'delete' | 'duplicate' | 'variants' | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
@@ -59,6 +59,39 @@ export default function ProductsPage() {
     setModalType('delete');
   };
 
+  const handleEditVariants = (product: Product) => {
+    setSelectedProduct(product);
+    setModalType('variants');
+    productService.getProduct(product._id).then(setSelectedProduct).catch(() => undefined);
+  };
+
+  const handleDuplicate = (product: Product) => {
+    // Fetch the full product data then open the modal in "add" mode with prefilled data
+    const duplicated: Product = {
+      ...product,
+      _id: '',
+      slug: '',
+      name: `${product.name} (Copy)`,
+      isActive: false,
+      isArchived: false,
+      variants: [],
+    };
+    setSelectedProduct(duplicated);
+    setModalType('duplicate');
+    // Also fetch the full product details to get all fields (variants excluded for duplicate)
+    productService.getProduct(product._id).then((full) => {
+      setSelectedProduct({
+        ...full,
+        _id: '',
+        slug: '',
+        name: `${full.name} (Copy)`,
+        isActive: false,
+        isArchived: false,
+        variants: [],
+      });
+    }).catch(() => undefined);
+  };
+
   const handleCloseModal = () => {
     setModalType(null);
     setSelectedProduct(null);
@@ -67,7 +100,7 @@ export default function ProductsPage() {
   const handleSubmit = async (data: ProductFormData, images: File[], thumbnail: File | null) => {
     setModalLoading(true);
     try {
-      if (modalType === 'add') {
+      if (modalType === 'add' || modalType === 'duplicate') {
         await createProduct(data, images, thumbnail);
       } else if (modalType === 'edit' && selectedProduct) {
         await updateProduct(selectedProduct._id, data, images, thumbnail);
@@ -147,8 +180,10 @@ export default function ProductsPage() {
         loading={loading}
         onView={handleView}
         onEdit={handleEdit}
+        onEditVariants={handleEditVariants}
         onDelete={handleDelete}
         onAdd={handleAdd}
+        onDuplicate={handleDuplicate}
         onPublish={(product) => runRowAction(product, () => publishProduct(product._id))}
         onUnpublish={(product) => runRowAction(product, () => unpublishProduct(product._id))}
         onRestore={(product) => runRowAction(product, () => restoreProduct(product._id))}
@@ -162,12 +197,13 @@ export default function ProductsPage() {
         actionLoadingId={actionLoadingId}
       />
 
-      {(modalType === 'add' || modalType === 'edit') && (
+      {(modalType === 'add' || modalType === 'edit' || modalType === 'duplicate' || modalType === 'variants') && (
         <ProductModal
           isOpen={true}
           onClose={handleCloseModal}
           onSubmit={handleSubmit}
-          initialData={modalType === 'edit' ? selectedProduct : null}
+          initialData={modalType === 'edit' || modalType === 'variants' ? selectedProduct : modalType === 'duplicate' ? selectedProduct : null}
+          scrollToVariants={modalType === 'variants'}
           loading={modalLoading}
         />
       )}

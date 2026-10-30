@@ -15,6 +15,7 @@ import {
   getStoredUser,
   getAccessToken,
 } from '@/lib/axios';
+import { authService } from '@/services/authService';
 import { useCartStore } from '@/store/cartStore';
 import { useWishlistStore } from '@/store/wishlistStore';
 import { User } from '@/Type/user';
@@ -39,15 +40,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchWishlist = useWishlistStore((s) => s.fetchWishlist);
 
   useEffect(() => {
-    const storedUser = getStoredUser<User>();
-    const token = getAccessToken();
+    let isMounted = true;
 
-    if (storedUser && token) {
-      setUser(storedUser);
-      fetchCart();
-      fetchWishlist();
+    async function initAuth() {
+      const storedUser = getStoredUser<User>();
+      const token = getAccessToken();
+
+      if (token) {
+        // Optimistically show stored user to prevent flashing
+        if (storedUser) {
+          setUser(storedUser);
+        }
+
+        try {
+          // Verify JWT token with backend
+          const profile = await authService.getProfile();
+          if (isMounted) {
+            setUser(profile);
+            saveUser(profile);
+            fetchCart();
+            fetchWishlist();
+          }
+        } catch {
+          // Token is invalid/expired and refresh failed
+          if (isMounted) {
+            clearSession();
+            setUser(null);
+            resetCart();
+            resetWishlist();
+          }
+        }
+      } else {
+        if (isMounted) {
+          clearSession();
+          setUser(null);
+        }
+      }
+
+      if (isMounted) {
+        setIsLoading(false);
+      }
     }
-    setIsLoading(false);
+
+    initAuth();
 
     function handleSessionExpired() {
       setUser(null);
@@ -56,7 +91,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     window.addEventListener('furninest:session-expired', handleSessionExpired);
-    return () => window.removeEventListener('furninest:session-expired', handleSessionExpired);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('furninest:session-expired', handleSessionExpired);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -72,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    authService.logout().catch(() => {});
     clearSession();
     setUser(null);
     resetCart();

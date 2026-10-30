@@ -189,11 +189,12 @@ class ProductService {
   async getSubCategoriesByCategory(categoryId: string): Promise<SubCategory[]> {
     try {
       const allSubCategories = await this.getSubCategories();
-      return allSubCategories.filter((sub) =>
-        typeof sub.category === 'string'
+      return allSubCategories.filter((sub) => {
+        if (!sub || !sub.category) return false;
+        return typeof sub.category === 'string'
           ? sub.category === categoryId
-          : (sub.category as Category)._id === categoryId,
-      );
+          : (sub.category as Category)?._id === categoryId;
+      });
     } catch (error) {
       console.error('Error fetching subcategories by category:', error);
       return [];

@@ -3,165 +3,221 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /* ===========================================================
-   LUXA FURNITURE Theme
+   LUXA FURNITURE — Light Theme
 =========================================================== */
 
 :root {
-  --background: #FBF7F2;
-  --foreground: #2B2420;
+  /* Surfaces */
+  --background:          #FBF7F2;
+  --surface:             #FFFFFF;
+  --surface-2:           #F1EBE2;
 
-  --primary: #3D2B1F;
-  --primary-foreground: #FBF7F2;
+  /* Text */
+  --foreground:          #2B2420;
+  --muted-foreground:    #6F6254;
 
-  --accent: #C9A66B;
-  --accent-foreground: #3D2B1F;
+  /* Brand */
+  --primary:             #3D2B1F;
+  --primary-foreground:  #FBF7F2;
 
-  --card: #FFFFFF;
-  --card-foreground: #2B2420;
+  /* Accent / gold */
+  --accent:              #C9A66B;
+  --accent-foreground:   #3D2B1F;
 
-  --muted: #F0E9DD;
-  --muted-foreground: #7A6F63;
+  /* Semantic aliases (used by Tailwind tokens) */
+  --card:                var(--surface);
+  --card-foreground:     var(--foreground);
+  --muted:               #F0E9DD;
 
-  --border: #E8E0D8;
+  /* Border */
+  --border:              #E8E0D8;
 
-  --destructive: #DC2626;
+  /* Header */
+  --header-bg:           rgba(251,247,242,0.88);
+
+  /* Status */
+  --destructive:         #DC2626;
   --destructive-foreground: #FFFFFF;
+  --success:             #16A34A;
+  --success-bg:          #F0FDF4;
+  --success-border:      #BBF7D0;
 }
 
 /* ===========================================================
-   Dark Theme (Premium Luxury)
+   LUXA FURNITURE — Dark Theme
 =========================================================== */
 
 .dark {
-  --background: #121212;
-  --foreground: #F8FAFC;
+  /* Surfaces */
+  --background:          #0F0E0C;
+  --surface:             #181613;
+  --surface-2:           #221F1A;
 
-  --primary: #D4A373;
-  --primary-foreground: #121212;
+  /* Text */
+  --foreground:          #F5EFE6;
+  --muted-foreground:    #B8AD9D;
 
-  --accent: #D4A373;
-  --accent-foreground: #121212;
+  /* Brand — gold reads well on dark */
+  --primary:             #E0A35C;
+  --primary-foreground:  #1A120A;
 
-  --card: #1E1E1E;
-  --card-foreground: #F8FAFC;
+  /* Accent */
+  --accent:              #E0A35C;
+  --accent-foreground:   #1A120A;
 
-  --muted: #2A2A2A;
-  --muted-foreground: #94A3B8;
+  /* Semantic aliases */
+  --card:                var(--surface);
+  --card-foreground:     var(--foreground);
+  --muted:               #2A2A2A;
 
-  --border: #333333;
+  /* Border */
+  --border:              rgba(255,255,255,0.12);
 
-  --destructive: #EF4444;
+  /* Header */
+  --header-bg:           rgba(24,22,19,0.92);
+
+  /* Status */
+  --destructive:         #EF4444;
   --destructive-foreground: #FFFFFF;
+  --success:             #4ADE80;
+  --success-bg:          rgba(74,222,128,0.1);
+  --success-border:      rgba(74,222,128,0.3);
 }
 
 /* ===========================================================
-   Tailwind Theme Variables
+   Tailwind v4 @theme — maps CSS vars → utility tokens
 =========================================================== */
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* Core surfaces */
+  --color-background:         var(--background);
+  --color-foreground:         var(--foreground);
+  --color-surface:            var(--surface);
+  --color-surface-2:          var(--surface-2);
 
-  --color-primary: var(--primary);
+  /* Brand */
+  --color-primary:            var(--primary);
   --color-primary-foreground: var(--primary-foreground);
 
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+  /* Accent */
+  --color-accent:             var(--accent);
+  --color-accent-foreground:  var(--accent-foreground);
 
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
+  /* Card (alias of surface) */
+  --color-card:               var(--card);
+  --color-card-foreground:    var(--card-foreground);
 
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
+  /* Muted */
+  --color-muted:              var(--muted);
+  --color-muted-foreground:   var(--muted-foreground);
 
-  --color-border: var(--border);
+  /* Border */
+  --color-border:             var(--border);
 
-  --color-destructive: var(--destructive);
+  /* Status */
+  --color-destructive:        var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Fonts */
+  --font-sans:  var(--font-geist-sans);
+  --font-mono:  var(--font-geist-mono);
 }
 
+/* ===========================================================
+   Base styles
+=========================================================== */
 
 body {
   background: var(--background);
   color: var(--foreground);
-  transition: background .3s ease, color .3s ease;
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
+/* Smooth transitions on theme change for all relevant properties */
+*, *::before, *::after {
+  transition-property: background-color, border-color, color, box-shadow;
+  transition-duration: 0.3s;
+  transition-timing-function: ease;
+}
+
+/* But don't apply transitions to transforms, opacity, etc. that would look sluggish */
+.no-theme-transition,
+.no-theme-transition * {
+  transition: none !important;
+}
+
+/* ===========================================================
+   Glass / blur surfaces
+=========================================================== */
+
+.glass {
+  background: var(--header-bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* dark:glass-dark is applied via the dark: variant in JSX */
+.glass-dark {
+  background: rgba(24,22,19,0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* ===========================================================
+   Shadows
+=========================================================== */
 
 .soft-shadow {
-  box-shadow: 0 4px 24px rgba(61, 43, 31, 0.08);
+  box-shadow: 0 4px 24px rgba(61,43,31,0.08);
 }
-
 .dark .soft-shadow {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.5);
 }
 
 .card-shadow {
-  box-shadow:
-    0 2px 12px rgba(61, 43, 31, 0.08),
-    0 1px 2px rgba(61, 43, 31, 0.06);
+  box-shadow: 0 2px 12px rgba(61,43,31,0.08), 0 1px 2px rgba(61,43,31,0.06);
 }
-
 .dark .card-shadow {
-  box-shadow:
-    0 10px 28px rgba(0, 0, 0, 0.40);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.5);
 }
 
 .card-hover {
-  transition: all .3s ease;
+  transition: all 0.3s ease;
 }
-
 .card-hover:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(61, 43, 31, 0.14);
+  box-shadow: 0 12px 32px rgba(61,43,31,0.14);
 }
-
 .dark .card-hover:hover {
   transform: translateY(-4px);
-  box-shadow: 0 16px 36px rgba(0, 0, 0, .55);
+  box-shadow: 0 16px 36px rgba(0,0,0,0.6);
 }
 
-
-.glass {
-  background: rgba(255,255,255,.70);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-}
-
-.glass-dark {
-  background: rgba(30,30,30,.80);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255,255,255,.05);
-}
+/* ===========================================================
+   Utilities
+=========================================================== */
 
 .hide-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
+.hide-scrollbar::-webkit-scrollbar { display: none; }
 
 /* ===========================================================
-   Swiper Pagination
+   Swiper pagination
 =========================================================== */
 
 .swiper-bullet-custom {
   width: 8px;
   height: 8px;
   border-radius: 9999px;
-  background: rgba(255,255,255,.35);
+  background: rgba(255,255,255,0.35);
   display: inline-block;
   margin: 0 4px !important;
   cursor: pointer;
-  transition: .3s;
+  transition: 0.3s;
 }
-
 .swiper-bullet-custom-active {
   width: 24px;
   background: var(--primary);

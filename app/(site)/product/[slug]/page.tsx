@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getProductBySlug } from '@/lib/data/products';
+import { getProductBySlug, getAllProductSlugs } from '@/lib/data/products';
 import {
   getCategoryName,
   getTotalStock,
@@ -11,8 +11,13 @@ import { ProductDetailClient } from '@/components/products/ProductDetailClient';
 import { ProductTabs } from '@/components/products/ProductTabs';
 import { PromoBanner } from '@/components/products/PromoBanner';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export const revalidate = 3600; // ISR: 1-hour caching
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  const slugs = await getAllProductSlugs({ limit: 50 });
+  return slugs.map((slug) => ({ slug }));
+}
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -47,12 +52,20 @@ export default async function ProductDetailPage({ params }: Props) {
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const baseGallery: string[] =
-    product.images.length > 0
-      ? product.images
-      : product.thumbnailImage
-        ? [product.thumbnailImage]
-        : [];
+  // Build baseGallery: thumbnail first (if it's not already in images), then product images
+  // This ensures the gallery is always populated and thumbnail acts as a fallback.
+  const rawImages = product.images ?? [];
+  const thumb = product.thumbnailImage || '';
+  const baseGallery: string[] = (() => {
+    if (rawImages.length > 0) {
+      // Prepend thumbnail only if it's not already the first image
+      if (thumb && !rawImages.includes(thumb)) {
+        return [thumb, ...rawImages];
+      }
+      return rawImages;
+    }
+    return thumb ? [thumb] : [];
+  })();
 
   const categoryName = getCategoryName(product);
 
@@ -91,20 +104,20 @@ export default async function ProductDetailPage({ params }: Props) {
         {/* ── Breadcrumb ─────────────────────────────────────────── */}
         <nav
           aria-label="Breadcrumb"
-          className="text-[13px] text-[#888] mb-6 flex items-center gap-1.5 flex-wrap"
+          className="text-[13px] text-muted-foreground mb-6 flex items-center gap-1.5 flex-wrap"
         >
-          <Link href="/" className="hover:text-[#1a1a1a] transition-colors">
+          <Link href="/" className="hover:text-foreground transition-colors">
             Home
           </Link>
-          <span className="text-[#ccc]">›</span>
+          <span className="text-border">›</span>
           <Link
             href={categoryName ? `/shop?category=${encodeURIComponent(categoryName)}` : '/shop'}
-            className="hover:text-[#1a1a1a] transition-colors"
+            className="hover:text-foreground transition-colors"
           >
             {categoryName || 'Sofas'}
           </Link>
-          <span className="text-[#ccc]">›</span>
-          <span className="text-[#1a1a1a] font-medium">{product.name}</span>
+          <span className="text-border">›</span>
+          <span className="text-foreground font-medium">{product.name}</span>
         </nav>
 
         {/* ── Main 3-col product block ───────────────────────────── */}

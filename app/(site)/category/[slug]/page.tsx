@@ -1,82 +1,51 @@
-'use client';
-
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { categoryService } from '@/services/categoryService';
-import { productService } from '@/services/productService';
+import {
+  getCategoryBySlug,
+  getSubCategoriesByCategory,
+  getProductsByCategory,
+} from '@/lib/data/categories';
 import { ProductGrid } from '@/components/products/ProductGrid';
-import { usePageTitle } from '@/hooks/usePageTitle';
-import { Category, SubCategory } from '@/Type/category';
-import { Product } from '@/Type/product';
 
-export default function CategoryPage() {
-  const params = useParams<{ slug: string }>();
-  const slug = params?.slug;
+export const revalidate = 3600; // ISR: 1-hour caching
+export const dynamicParams = true;
 
-  const [category, setCategory] = useState<Category | null>(null);
-  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+type Props = { params: Promise<{ slug: string }> };
 
-  usePageTitle(category?.name ?? 'Category');
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const category = await getCategoryBySlug(slug);
+  if (!category) return { title: 'Category not found' };
 
-  useEffect(() => {
-    if (!slug) return;
-    let mounted = true;
-    setIsLoading(true);
-    setError('');
-    (async () => {
-      try {
-        const cat = await categoryService.getCategoryBySlug(slug);
-        if (!mounted) return;
-        setCategory(cat);
-        const [subs, prods] = await Promise.all([
-          categoryService.getSubCategoriesByCategory(cat._id),
-          productService.getProductsByCategory(cat._id),
-        ]);
-        if (!mounted) return;
-        setSubCategories(subs);
-        setProducts(prods);
-      } catch (err) {
-        if (mounted) setError(err instanceof Error ? err.message : 'Category not found.');
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [slug]);
+  return {
+    title: `${category.name} | LUXA FURNITURE`,
+    description: category.description || `Browse ${category.name} furniture at LUXA FURNITURE.`,
+    alternates: { canonical: `/category/${slug}` },
+  };
+}
 
-  if (isLoading) {
-    return (
-      <div className="pt-32 pb-20 text-center">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-      </div>
-    );
-  }
+export default async function CategoryPage({ params }: Props) {
+  const { slug } = await params;
+  const category = await getCategoryBySlug(slug);
+  if (!category) notFound();
 
-  if (error || !category) {
-    return (
-      <div className="pt-32 pb-20 text-center">
-        <p className="text-lg text-destructive mb-4">{error || 'Category not found.'}</p>
-        <Link href="/shop" className="text-primary underline">Back to shop</Link>
-      </div>
-    );
-  }
+  const [subCategories, products] = await Promise.all([
+    getSubCategoriesByCategory(category._id),
+    getProductsByCategory(category._id),
+  ]);
 
   return (
     <div className="pb-20">
       <div className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 py-16 md:py-24 rounded-b-[3rem] mb-12">
         <div className="container mx-auto px-6 text-center">
-          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-4xl md:text-6xl font-serif text-primary mb-6">
+          <h1 className="text-4xl md:text-6xl font-serif text-primary mb-6">
             {category.name}
-          </motion.h1>
+          </h1>
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground font-medium uppercase tracking-wider">
-            <Link href="/" className="hover:text-primary transition-colors">Home</Link>
+            <Link href="/" className="hover:text-primary transition-colors">
+              Home
+            </Link>
             <span>/</span>
             <span className="text-primary">{category.name}</span>
           </div>

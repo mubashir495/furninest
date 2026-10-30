@@ -23,7 +23,14 @@ export default function LoginPage() {
 
       login(data.user, data.accessToken, data.refreshToken);
 
-      if (data.user.role === 'ADMIN') {
+      const redirect =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search).get('redirect')
+          : null;
+
+      if (redirect && redirect.startsWith('/') && !redirect.startsWith('/auth')) {
+        router.push(redirect);
+      } else if (data.user.role === 'ADMIN') {
         router.push('/dashboard');
       } else {
         router.push('/');

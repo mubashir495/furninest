@@ -11,7 +11,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { ThemeMode } from '@/Type/theme';
 
 export function Footer() {
-  const { mode, setMode, customTheme, setCustomTheme, isDark } = useTheme();
+  const { mode, setMode, customTheme, setCustomTheme, mounted } = useTheme();
 
   const themeOptions: { label: string; value: ThemeMode; icon: React.ReactNode }[] = [
     { label: 'Light', value: 'light', icon: <Sun size={16} /> },
@@ -53,7 +53,7 @@ export function Footer() {
                   key={opt.value}
                   onClick={() => setMode(opt.value)}
                   className={`p-2 rounded-full transition-all ${
-                    mode === opt.value
+                    mounted && mode === opt.value
                       ? 'bg-primary text-primary-foreground shadow-md'
                       : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-muted-foreground'
                   }`}

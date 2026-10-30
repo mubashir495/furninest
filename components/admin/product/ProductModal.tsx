@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { X, Save, Loader2, ImagePlus, Plus, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Star } from 'lucide-react';
 import { colors } from '@/config/colors';
 import { Product, ProductFormData, Category, SubCategory } from '@/Type/products';
@@ -16,6 +16,7 @@ interface ProductModalProps {
   onSubmit: (data: ProductFormData, images: File[], thumbnail: File | null) => Promise<void>;
   initialData?: Product | null;
   loading?: boolean;
+  scrollToVariants?: boolean;
 }
 
 // Pulls a plain string id out of a value that may be a populated object or already an id
@@ -28,7 +29,6 @@ const toId = (value: unknown): string => {
   return String(value);
 };
 
-const CONFIG_NAMES = ['3-Seater', '5-Seater', 'Single Chair', 'Sofa+Chair Set', 'Complete Set'] as const;
 const HEX_RE = /^#([0-9A-Fa-f]{6})$/;
 const VARIANT_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_VARIANT_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -179,12 +179,6 @@ function changedVariantPayload(original: ProductVariant, draft: VariantDraft): R
   if (weight !== origWeight) payload.weight = weight;
   if (draft.isActive !== original.isActive) payload.isActive = draft.isActive;
   return payload;
-}
-
-function configOptions(current: string) {
-  const options = [...CONFIG_NAMES] as string[];
-  if (current && !options.includes(current)) options.push(current);
-  return options;
 }
 
 const modalStyles = {
@@ -362,17 +356,14 @@ function VariantFields({
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
       <div>
         <label style={modalStyles.label} htmlFor={`${idPrefix}-config`}>Configuration *</label>
-        <select
+        <input
           id={`${idPrefix}-config`}
+          type="text"
+          placeholder="e.g. 3-Seater, 5-Seater, Single Chair…"
           value={draft.configName}
           onChange={(e) => onChange({ configName: e.target.value })}
-          style={modalStyles.select}
-        >
-          <option value="">Select configuration</option>
-          {configOptions(draft.configName).map((name) => (
-            <option key={name} value={name}>{name}</option>
-          ))}
-        </select>
+          style={modalStyles.input}
+        />
       </div>
       <div>
         <label style={modalStyles.label} htmlFor={`${idPrefix}-color-name`}>Colour name</label>
@@ -506,6 +497,7 @@ export default function ProductModal({
   onSubmit,
   initialData,
   loading = false,
+  scrollToVariants = false,
 }: ProductModalProps) {
   const [formData, setFormData] = useState<ProductFormData>(emptyProductForm());
   const [featureInput, setFeatureInput] = useState('');
@@ -520,7 +512,9 @@ export default function ProductModal({
   const [existingThumbnail, setExistingThumbnail] = useState<string>('');
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+  const [submitMode, setSubmitMode] = useState<'draft' | 'publish'>('publish');
 
   const [colorInput, setColorInput] = useState('');
   const [sizeInput, setSizeInput] = useState('');
@@ -540,8 +534,12 @@ export default function ProductModal({
   const { subCategories, loading: subCategoriesLoading } = useSubCategories(selectedCategory);
   const { products: suggestionCandidates, loading: suggestionsLoading } = useAllProducts(initialData?._id);
 
+  // Tracks whether the last submit was "draft" or "publish"
+  const submitModeRef = useRef<'draft' | 'publish'>('publish');
+
   useEffect(() => {
     setErrors({});
+    setSubmitError('');
 
     if (initialData) {
       const categoryId = typeof initialData.category === 'object'
@@ -614,6 +612,16 @@ export default function ProductModal({
     }
   }, [initialData]);
 
+  // Auto-scroll to variants section when opened via "Manage Variants" button
+  useEffect(() => {
+    if (isOpen && scrollToVariants && initialData?._id) {
+      setTimeout(() => {
+        const el = document.getElementById('variant-section-anchor');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
+  }, [isOpen, scrollToVariants, initialData?._id]);
+
   if (!isOpen) return null;
 
   const validateForm = (): boolean => {
@@ -671,24 +679,69 @@ export default function ProductModal({
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+
+    // Scroll to the first error field
+    const hasErrors = Object.keys(newErrors).length > 0;
+    if (hasErrors) {
+      const firstKey = Object.keys(newErrors)[0];
+      // field id mapping
+      const idMap: Record<string, string> = {
+        name: 'field-name',
+        category: 'field-category',
+        subCategory: 'field-subCategory',
+        shortDescription: 'field-shortDescription',
+        longDescription: 'field-longDescription',
+        price: 'field-price',
+        discount: 'field-discount',
+        stock: 'field-stock',
+        images: 'field-images',
+        thumbnail: 'field-thumbnail',
+        seoTitle: 'field-seoTitle',
+        seoDescription: 'field-seoDescription',
+      };
+      const targetId = idMap[firstKey];
+      if (targetId) {
+        setTimeout(() => {
+          const el = document.getElementById(targetId);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+      }
+    }
+
+    return !hasErrors;
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setSubmitError('');
     if (!validateForm()) return;
+
+    const isDraft = submitModeRef.current === 'draft';
 
     try {
       setSubmitting(true);
       const payload: ProductFormData = {
         ...formData,
+        // Draft → force isActive false; Publish → honour form value (default true)
+        isActive: isDraft ? false : (formData.isActive !== false ? true : formData.isActive),
         features: (formData.features || []).map((f) => f.trim()).filter(Boolean),
         specifications: (formData.specifications || []).filter((s) => s.label.trim() && s.value.trim()),
       };
       await onSubmit(payload, imageFiles, thumbnailFile);
       onClose();
     } catch (error) {
-      console.error(error);
+      const msg =
+        error instanceof Error
+          ? error.message
+          : typeof (error as any)?.response?.data?.message === 'string'
+            ? (error as any).response.data.message
+            : 'Something went wrong. Please try again.';
+      setSubmitError(msg);
+      // Scroll to top of modal so the error banner is visible
+      setTimeout(() => {
+        const el = document.getElementById('product-modal-scroll');
+        if (el) el.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 50);
     } finally {
       setSubmitting(false);
     }
@@ -706,6 +759,8 @@ export default function ProductModal({
         [field]: '',
       }));
     }
+    // Clear server-level submit error on any user edit
+    if (submitError) setSubmitError('');
   };
 
   const handleCategoryChange = (categoryId: string) => {
@@ -833,11 +888,15 @@ export default function ProductModal({
         if (!isSubmitting && !variantLoading && !variantBusyId) onClose();
       }}
     >
-      <div style={modalStyles.modal} onClick={(e) => e.stopPropagation()}>
+      <div style={modalStyles.modal} id="product-modal-scroll" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div style={modalStyles.header}>
           <h2 style={{ fontSize: '22px', fontWeight: 700 }}>
-            {initialData ? 'Update Product' : 'Add Product'}
+            {initialData
+              ? initialData._id
+                ? 'Update Product'
+                : 'Duplicate Product'
+              : 'Add Product'}
           </h2>
           <button
             onClick={onClose}
@@ -854,52 +913,106 @@ export default function ProductModal({
         {/* Body */}
         <div style={modalStyles.body}>
           <form onSubmit={handleSubmit}>
+            {/* Submit error banner */}
+            {submitError && (
+              <div
+                style={{
+                  marginBottom: '16px',
+                  padding: '12px 16px',
+                  background: '#fef2f2',
+                  border: '1px solid #fca5a5',
+                  borderRadius: '8px',
+                  color: '#b91c1c',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                }}
+              >
+                <span style={{ fontWeight: 600 }}>⚠</span>
+                {submitError}
+              </div>
+            )}
+
+            {/* Validation summary – shown only when errors exist */}
+            {Object.keys(errors).length > 0 && (
+              <div
+                style={{
+                  marginBottom: '16px',
+                  padding: '12px 16px',
+                  background: '#fffbeb',
+                  border: '1px solid #fcd34d',
+                  borderRadius: '8px',
+                  color: '#92400e',
+                  fontSize: '13px',
+                }}
+              >
+                <p style={{ fontWeight: 600, marginBottom: '6px' }}>Please fix the following before saving:</p>
+                <ul style={{ margin: 0, paddingLeft: '18px' }}>
+                  {Object.values(errors).filter(Boolean).map((msg, i) => (
+                    <li key={i}>{msg}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {/* Product Name */}
-            <div style={modalStyles.formGroup}>
+            <div id="field-name" style={modalStyles.formGroup}>
               <label style={modalStyles.label}>Product Name *</label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => handleFieldChange('name', e.target.value)}
                 placeholder="Product Name"
-                style={modalStyles.input}
+                style={{
+                  ...modalStyles.input,
+                  ...(errors.name ? { borderColor: '#ef4444' } : {}),
+                }}
               />
               {errors.name && <p style={modalStyles.error}>{errors.name}</p>}
             </div>
 
             {/* Short Description */}
-            <div style={modalStyles.formGroup}>
+            <div id="field-shortDescription" style={modalStyles.formGroup}>
               <label style={modalStyles.label}>Short Description *</label>
               <input
                 type="text"
                 value={formData.shortDescription}
                 onChange={(e) => handleFieldChange('shortDescription', e.target.value)}
                 placeholder="Short Description"
-                style={modalStyles.input}
+                style={{
+                  ...modalStyles.input,
+                  ...(errors.shortDescription ? { borderColor: '#ef4444' } : {}),
+                }}
               />
               {errors.shortDescription && <p style={modalStyles.error}>{errors.shortDescription}</p>}
             </div>
 
             {/* Long Description */}
-            <div style={modalStyles.formGroup}>
+            <div id="field-longDescription" style={modalStyles.formGroup}>
               <label style={modalStyles.label}>Long Description *</label>
               <textarea
                 value={formData.longDescription}
                 onChange={(e) => handleFieldChange('longDescription', e.target.value)}
                 placeholder="Long Description"
-                style={modalStyles.textarea}
+                style={{
+                  ...modalStyles.textarea,
+                  ...(errors.longDescription ? { borderColor: '#ef4444' } : {}),
+                }}
               />
               {errors.longDescription && <p style={modalStyles.error}>{errors.longDescription}</p>}
             </div>
 
             {/* Category & Sub Category */}
             <div style={modalStyles.row}>
-              <div style={modalStyles.formGroup}>
+              <div id="field-category" style={modalStyles.formGroup}>
                 <label style={modalStyles.label}>Category *</label>
                 <select
                   value={selectedCategory}
                   onChange={(e) => handleCategoryChange(e.target.value)}
-                  style={modalStyles.select}
+                  style={{
+                    ...modalStyles.select,
+                    ...(errors.category ? { borderColor: '#ef4444' } : {}),
+                  }}
                   disabled={categoriesLoading}
                 >
                   <option value="">Select Category</option>
@@ -912,12 +1025,15 @@ export default function ProductModal({
                 {errors.category && <p style={modalStyles.error}>{errors.category}</p>}
               </div>
 
-              <div style={modalStyles.formGroup}>
+              <div id="field-subCategory" style={modalStyles.formGroup}>
                 <label style={modalStyles.label}>Sub Category *</label>
                 <select
                   value={formData.subCategory}
                   onChange={(e) => handleFieldChange('subCategory', e.target.value)}
-                  style={modalStyles.select}
+                  style={{
+                    ...modalStyles.select,
+                    ...(errors.subCategory ? { borderColor: '#ef4444' } : {}),
+                  }}
                   disabled={!selectedCategory || subCategoriesLoading}
                 >
                   <option value="">Select Sub Category</option>
@@ -933,19 +1049,22 @@ export default function ProductModal({
 
             {/* Price & Discount */}
             <div style={modalStyles.row}>
-              <div style={modalStyles.formGroup}>
+              <div id="field-price" style={modalStyles.formGroup}>
                 <label style={modalStyles.label}>Price *</label>
                 <input
                   type="number"
                   min={0}
                   value={formData.price}
                   onChange={(e) => handleFieldChange('price', Number(e.target.value))}
-                  style={modalStyles.input}
+                  style={{
+                    ...modalStyles.input,
+                    ...(errors.price ? { borderColor: '#ef4444' } : {}),
+                  }}
                 />
                 {errors.price && <p style={modalStyles.error}>{errors.price}</p>}
               </div>
 
-              <div style={modalStyles.formGroup}>
+              <div id="field-discount" style={modalStyles.formGroup}>
                 <label style={modalStyles.label}>Discount %</label>
                 <input
                   type="number"
@@ -953,21 +1072,27 @@ export default function ProductModal({
                   max={100}
                   value={formData.discount}
                   onChange={(e) => handleFieldChange('discount', Number(e.target.value))}
-                  style={modalStyles.input}
+                  style={{
+                    ...modalStyles.input,
+                    ...(errors.discount ? { borderColor: '#ef4444' } : {}),
+                  }}
                 />
                 {errors.discount && <p style={modalStyles.error}>{errors.discount}</p>}
               </div>
             </div>
 
             {/* Stock */}
-            <div style={modalStyles.formGroup}>
+            <div id="field-stock" style={modalStyles.formGroup}>
               <label style={modalStyles.label}>Stock *</label>
               <input
                 type="number"
                 min={0}
                 value={formData.stock}
                 onChange={(e) => handleFieldChange('stock', Number(e.target.value))}
-                style={modalStyles.input}
+                style={{
+                  ...modalStyles.input,
+                  ...(errors.stock ? { borderColor: '#ef4444' } : {}),
+                }}
               />
               {errors.stock && <p style={modalStyles.error}>{errors.stock}</p>}
             </div>
@@ -1289,7 +1414,7 @@ export default function ProductModal({
               </button>
             </div>
 
-            <div style={modalStyles.formGroup}>
+            <div id="field-seoTitle" style={modalStyles.formGroup}>
               <label style={modalStyles.label} htmlFor="product-seo-title">
                 SEO title{' '}
                 <span style={{ fontWeight: 400, color: colors.text.muted }}>
@@ -1303,12 +1428,15 @@ export default function ProductModal({
                 value={formData.seoTitle || ''}
                 onChange={(e) => handleFieldChange('seoTitle', e.target.value)}
                 placeholder="Shown in search results"
-                style={modalStyles.input}
+                style={{
+                  ...modalStyles.input,
+                  ...(errors.seoTitle ? { borderColor: '#ef4444' } : {}),
+                }}
               />
               {errors.seoTitle && <p style={modalStyles.error}>{errors.seoTitle}</p>}
             </div>
 
-            <div style={modalStyles.formGroup}>
+            <div id="field-seoDescription" style={modalStyles.formGroup}>
               <label style={modalStyles.label} htmlFor="product-seo-description">
                 SEO description{' '}
                 <span style={{ fontWeight: 400, color: colors.text.muted }}>
@@ -1321,13 +1449,17 @@ export default function ProductModal({
                 value={formData.seoDescription || ''}
                 onChange={(e) => handleFieldChange('seoDescription', e.target.value)}
                 placeholder="Meta description"
-                style={{ ...modalStyles.textarea, minHeight: '80px' }}
+                style={{
+                  ...modalStyles.textarea,
+                  minHeight: '80px',
+                  ...(errors.seoDescription ? { borderColor: '#ef4444' } : {}),
+                }}
               />
               {errors.seoDescription && <p style={modalStyles.error}>{errors.seoDescription}</p>}
             </div>
 
             {/* Thumbnail Image */}
-            <div style={modalStyles.formGroup}>
+            <div id="field-thumbnail" style={modalStyles.formGroup}>
               <label style={modalStyles.label}>Thumbnail Image *</label>
               <div style={modalStyles.thumbnailWrap}>
                 {thumbnailPreview || existingThumbnail ? (
@@ -1381,7 +1513,7 @@ export default function ProductModal({
             </div>
 
             {/* Product Images */}
-            <div style={modalStyles.formGroup}>
+            <div id="field-images" style={modalStyles.formGroup}>
               <label style={modalStyles.label}>Product Images *</label>
               <ProductImageUpload
                 onImagesChange={setImageFiles}
@@ -1439,7 +1571,7 @@ export default function ProductModal({
             </div>
 
             {/* ── Variants ── */}
-            <div style={{ ...modalStyles.formGroup, border: `1px solid ${colors.border}`, borderRadius: '10px', padding: '16px', marginTop: '8px' }}>
+            <div id="variant-section-anchor" style={{ ...modalStyles.formGroup, border: `1px solid ${colors.border}`, borderRadius: '10px', padding: '16px', marginTop: '8px' }}>
               <div
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', userSelect: 'none' as const }}
                 onClick={() => setVariantSection((v) => !v)}
@@ -1788,27 +1920,63 @@ export default function ProductModal({
               >
                 Cancel
               </button>
+
+              {/* Save as Draft — always visible, forces isActive=false */}
               <button
                 type="submit"
                 disabled={isSubmitting || variantBusy}
+                onClick={() => { submitModeRef.current = 'draft'; }}
                 style={{
                   ...modalStyles.button,
-                  ...modalStyles.primaryButton,
+                  background: '#f3f4f6',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
                   ...(isSubmitting || variantBusy ? modalStyles.buttonDisabled : {}),
                 }}
               >
-                {isSubmitting ? (
+                {isSubmitting && submitModeRef.current === 'draft' ? (
+                  <Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} />
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                  </svg>
+                )}
+                Save as Draft
+              </button>
+
+              {/* Publish / Update — sets isActive=true */}
+              <button
+                type="submit"
+                disabled={isSubmitting || variantBusy}
+                onClick={() => { submitModeRef.current = 'publish'; }}
+                style={{
+                  ...modalStyles.button,
+                  ...modalStyles.primaryButton,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  ...(isSubmitting || variantBusy ? modalStyles.buttonDisabled : {}),
+                }}
+              >
+                {isSubmitting && submitModeRef.current === 'publish' ? (
                   <>
                     <Loader2
                       size={18}
-                      style={{ animation: 'spin 1s linear infinite', marginRight: '8px' }}
+                      style={{ animation: 'spin 1s linear infinite' }}
                     />
-                    {initialData ? 'Updating...' : 'Creating...'}
+                    {initialData?._id ? 'Updating...' : 'Publishing...'}
                   </>
                 ) : (
                   <>
-                    <Save size={18} style={{ marginRight: '8px' }} />
-                    {initialData ? 'Update Product' : 'Add Product'}
+                    <Save size={18} />
+                    {initialData?._id ? 'Update Product' : 'Publish Product'}
                   </>
                 )}
               </button>

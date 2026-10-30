@@ -10,15 +10,17 @@ import {
   hasVariants,
 } from '@/Type/product';
 import { formatCurrency } from '@/utils/validators';
-import { Archive, Eye, Edit2, Loader2, Plus, RotateCcw, Search, Upload, Ban } from 'lucide-react';
+import { Archive, Eye, Edit2, Loader2, Plus, RotateCcw, Search, Upload, Ban, Copy, Layers } from 'lucide-react';
 
 interface ProductTableProps {
   products: Product[];
   loading: boolean;
   onView: (product: Product) => void;
   onEdit: (product: Product) => void;
+  onEditVariants: (product: Product) => void;
   onDelete: (product: Product) => void;
   onAdd: () => void;
+  onDuplicate?: (product: Product) => void;
   onPublish?: (product: Product) => Promise<void> | void;
   onUnpublish?: (product: Product) => Promise<void> | void;
   onRestore?: (product: Product) => Promise<void> | void;
@@ -58,8 +60,10 @@ export default function ProductTable({
   loading,
   onView,
   onEdit,
+  onEditVariants,
   onDelete,
   onAdd,
+  onDuplicate,
   onPublish,
   onUnpublish,
   onRestore,
@@ -312,6 +316,20 @@ export default function ProductTable({
                         <button type="button" onClick={() => onEdit(product)} style={{ ...actionButtonStyle, color: colors.primary[500] }} title="Edit product" aria-label={`Edit ${product.name}`}>
                           <Edit2 size={18} />
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => onEditVariants(product)}
+                          style={{ ...actionButtonStyle, color: colors.success[700] }}
+                          title={`Manage variants (${variantCount})`}
+                          aria-label={`Manage variants for ${product.name}`}
+                        >
+                          <Layers size={18} />
+                        </button>
+                        {onDuplicate && (
+                          <button type="button" onClick={() => onDuplicate(product)} style={{ ...actionButtonStyle, color: colors.info[500] }} title="Duplicate product" aria-label={`Duplicate ${product.name}`}>
+                            <Copy size={18} />
+                          </button>
+                        )}
                         {product.isArchived ? (
                           <button
                             type="button"

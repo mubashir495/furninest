@@ -17,7 +17,7 @@ interface FilterSidebarProps {
   isMobileOpen: boolean;
   onCloseMobile: () => void;
   onSelectCategory: (categoryId: string | null) => void;
-  onSelectSubCategory: (subCategoryId: string | null) => void;
+  onSelectSubCategory: (subCategoryId: string | null, categoryId?: string | null) => void;
   onPriceChange: (price: number) => void;
   onPriceCommit: (price: number) => void;
   onToggleInStock: () => void;
@@ -44,16 +44,31 @@ export function FilterSidebar({
   onToggleOnSale,
   onClearAll,
 }: FilterSidebarProps) {
+  // Start null so SSR and initial client render match.
+  // The useEffect below syncs with selectedCategory or selectedSubCategory after mount.
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Auto-expand the category that owns the currently selected subcategory
+  // Only run on client after mount — avoids SSR/hydration mismatch
   useEffect(() => {
     if (selectedCategory) {
       setExpandedId(selectedCategory);
+    } else if (selectedSubCategory && catalog.length > 0) {
+      const parent = catalog.find((c) =>
+        c.subCategories?.some((s) => s._id === selectedSubCategory)
+      );
+      if (parent) setExpandedId(parent._id);
+    } else {
+      setExpandedId(null);
     }
-  }, [selectedCategory]);
+  }, [selectedCategory, selectedSubCategory, catalog]);
 
-  const hasActiveFilters = !!(selectedCategory || inStockOnly || onSaleOnly || priceRange < maxPossiblePrice);
+  const hasActiveFilters = !!(
+    selectedCategory ||
+    selectedSubCategory ||
+    inStockOnly ||
+    onSaleOnly ||
+    priceRange < maxPossiblePrice
+  );
 
   return (
     <div
@@ -109,9 +124,9 @@ export function FilterSidebar({
                   <div key={cat._id}>
                     <button
                       onClick={() => {
-                        setExpandedId(isExpanded ? null : cat._id);
-                        onSelectCategory(cat._id);
-                        onSelectSubCategory(null);
+                        const willExpand = !isExpanded;
+                        setExpandedId(willExpand ? cat._id : null);
+                        onSelectCategory(selectedCategory === cat._id && !selectedSubCategory ? null : cat._id);
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
                         isCategorySelected ? 'bg-muted text-primary font-bold' : 'text-foreground hover:bg-muted/60'
@@ -128,8 +143,8 @@ export function FilterSidebar({
                           <button
                             key={sub._id}
                             onClick={() => {
-                              onSelectCategory(cat._id);
-                              onSelectSubCategory(selectedSubCategory === sub._id ? null : sub._id);
+                              const nextSub = selectedSubCategory === sub._id ? null : sub._id;
+                              onSelectSubCategory(nextSub, cat._id);
                             }}
                             className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors ${
                               selectedSubCategory === sub._id
@@ -176,7 +191,7 @@ export function FilterSidebar({
 
         <div className="h-px bg-border" />
 
-        {/* Availability — kept as requested */}
+        {/* Availability */}
         <div>
           <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-4">Availability</h4>
           <div className="space-y-3">
