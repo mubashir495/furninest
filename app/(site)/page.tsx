@@ -11,13 +11,14 @@ import { ProductCarousel } from '@/components/products/ProductCarousel';
 export const revalidate = 3600; // ISR: catalog rebuilds at most every 1 hour or on-demand
 
 export const metadata: Metadata = {
-  title: 'LUXA FURNITURE — Premium Furniture for Every UK Home',
+  title: 'LUXA FURNITURE | Luxury Beds, Sofas & Dining Furniture UK',
   description:
-    'Shop premium sofas, chairs, tables and furniture sets at LUXA FURNITURE. Quality craftsmanship, UK delivery.',
+    'Discover premium beds, stylish sofas and elegant dining furniture at LUXA FURNITURE. Explore beautiful furniture collections for your home across the UK.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'LUXA FURNITURE — Premium Furniture for Every UK Home',
-    description: 'Shop premium sofas, chairs, tables and furniture sets at LUXA FURNITURE.',
+    title: 'LUXA FURNITURE | Luxury Beds, Sofas & Dining Furniture UK',
+    description:
+      'Discover premium beds, stylish sofas and elegant dining furniture at LUXA FURNITURE. Explore beautiful furniture collections for your home across the UK.',
     type: 'website',
     url: '/',
   },

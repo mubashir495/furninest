@@ -34,8 +34,8 @@ function Sidebar({ onClose }: { onClose?: () => void }) {
     <div className="flex flex-col h-full bg-card border-r border-border">
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-border shrink-0">
-        <Link href="/admin" onClick={onClose} className="font-serif text-xl font-bold text-primary tracking-wider">
-          LUXA <span className="text-accent">Admin</span>
+        <Link href="/admin" onClick={onClose} className="font-serif text-lg font-bold text-primary tracking-wider uppercase">
+          LUXA FURNITURE <span className="text-accent text-xs font-sans tracking-normal font-medium">Admin</span>
         </Link>
       </div>
 

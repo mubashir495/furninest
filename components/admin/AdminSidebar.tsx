@@ -21,8 +21,8 @@ export function AdminSidebar() {
     <aside className="w-64 h-screen sticky top-0 bg-white border-r border-[#E8E0D8] flex flex-col">
       {/* Brand */}
       <div className="px-6 py-5 border-b border-[#E8E0D8]">
-        <Link href="/dashboard" className="text-xl font-bold text-[#2B2420]">
-          Furniture<span className="text-[#8B5E34]">Nest</span>
+        <Link href="/dashboard" className="font-serif text-lg font-bold tracking-wider uppercase text-[#2B2420]">
+          LUXA <span className="text-[#8B5E34]">FURNITURE</span>
         </Link>
         <p className="text-xs text-[#8B7B6F] mt-0.5">Admin Panel</p>
       </div>

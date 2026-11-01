@@ -60,8 +60,8 @@ export default function AdminLayout({
               <Menu  size={24} />
             </button>
 
-            <h2 className="font-semibold">
-              LUXA Admin
+            <h2 className="font-semibold font-serif text-sm tracking-wider uppercase">
+              LUXA FURNITURE Admin
             </h2>
 
           </header>

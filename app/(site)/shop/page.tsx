@@ -6,7 +6,8 @@ export const revalidate = 3600; // ISR: 1-hour caching
 
 export const metadata: Metadata = {
   title: 'Our Collection | LUXA FURNITURE',
-  description: 'Shop luxury furniture sets, sofas, dining tables and chairs at LUXA FURNITURE.',
+  description:
+    'Discover luxury beds, premium sofas, dining tables and chairs at LUXA FURNITURE. Quality craftsmanship with UK delivery.',
   alternates: { canonical: '/shop' },
 };
 

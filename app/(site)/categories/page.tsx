@@ -6,7 +6,8 @@ export const revalidate = 3600; // ISR: 1-hour caching
 
 export const metadata: Metadata = {
   title: 'All Categories | LUXA FURNITURE',
-  description: 'Browse all luxury furniture categories at LUXA FURNITURE.',
+  description:
+    'Explore luxury beds, premium sofas, dining tables and living room furniture categories at LUXA FURNITURE.',
   alternates: { canonical: '/categories' },
 };
 

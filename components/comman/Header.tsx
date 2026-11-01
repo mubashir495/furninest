@@ -123,8 +123,8 @@ export function Header() {
 
             {/* Logo */}
             <Link href="/" className="flex-shrink-0">
-              <span className="font-serif text-2xl md:text-3xl font-bold tracking-widest uppercase text-primary">
-                LUXA<span className="hidden sm:inline"> FURNITURE</span>
+              <span className="font-serif text-lg sm:text-2xl md:text-3xl font-bold tracking-widest uppercase text-primary">
+                LUXA FURNITURE
               </span>
             </Link>
 
@@ -311,8 +311,16 @@ export function Header() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-30 bg-background/95 backdrop-blur pt-[132px] px-6 flex flex-col md:hidden"
+            className="fixed inset-0 z-30 bg-background/95 backdrop-blur pt-[132px] px-6 flex flex-col md:hidden overflow-y-auto"
           >
+            <div className="mb-2 pb-4 border-b border-border/60">
+              <span className="font-serif text-xl font-bold tracking-widest uppercase text-primary block">
+                LUXA FURNITURE
+              </span>
+              <span className="text-[11px] text-muted-foreground uppercase tracking-widest">
+                Luxury Beds, Sofas &amp; Dining
+              </span>
+            </div>
             <nav className="flex flex-col gap-6 text-xl">
               {navLinks.map((link) => (
                 <Link

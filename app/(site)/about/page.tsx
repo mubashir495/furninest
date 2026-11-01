@@ -7,11 +7,11 @@ import { TrustBadges } from '@/components/comman/TrustBadges';
 export const metadata: Metadata = {
   title: 'About Us | LUXA FURNITURE',
   description:
-    'LUXA FURNITURE crafts modern furniture for every home — quality materials, honest pricing, and pieces built to last.',
+    'LUXA FURNITURE is a premier UK destination for luxury beds, premium sofas, and elegant dining furniture crafted to last.',
   alternates: { canonical: '/about' },
   openGraph: {
     title: 'About LUXA FURNITURE',
-    description: 'Quality furniture, honest craftsmanship, made for real homes.',
+    description: 'Luxury beds, premium sofas & dining furniture crafted for elegant UK homes.',
     type: 'website',
     url: '/about',
   },

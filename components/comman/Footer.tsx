@@ -82,7 +82,7 @@ export function Footer() {
         {/* 4 Columns */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           <div>
-            <h4 className="font-serif text-xl mb-6 text-primary font-medium">About LUXA</h4>
+            <h4 className="font-serif text-xl mb-6 text-primary font-medium">About LUXA FURNITURE</h4>
             <ul className="space-y-4 text-sm text-muted-foreground">
               <li><Link href="/about" className="hover:text-primary transition-colors">Our Story</Link></li>
               <li><Link href="/about" className="hover:text-primary transition-colors">Craftsmanship</Link></li>

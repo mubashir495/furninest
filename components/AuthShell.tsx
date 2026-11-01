@@ -20,10 +20,9 @@ export function AuthShell({
         {/* Brand Logo */}
         <Link
           href="/"
-          className="inline-flex items-center gap-2 mb-8 text-2xl font-semibold text-[#3D2B1F] hover:text-[#8B5E34] transition-colors"
+          className="inline-flex items-center gap-2 mb-8 font-serif text-2xl font-bold tracking-wider uppercase text-[#3D2B1F] hover:text-[#8B5E34] transition-colors"
         >
-          <span className="text-3xl">🪑</span>
-          <span>LUXA</span>
+          <span>LUXA FURNITURE</span>
         </Link>
 
         {/* Card */}

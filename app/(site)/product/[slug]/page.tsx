@@ -78,6 +78,10 @@ export default async function ProductDetailPage({ params }: Props) {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name: product.name,
+    brand: {
+      '@type': 'Brand',
+      name: 'LUXA FURNITURE',
+    },
     image: baseGallery,
     description: product.shortDescription,
     offers: {

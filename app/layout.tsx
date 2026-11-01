@@ -26,37 +26,45 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://luxafurniture.co.uk
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "LUXA FURNITURE — Premium Furniture for Every UK Home",
+    default: "LUXA FURNITURE | Luxury Beds, Sofas & Dining Furniture UK",
     template: "%s | LUXA FURNITURE",
   },
   description:
-    "Shop premium sofas, chairs, tables and furniture sets at LUXA FURNITURE. Quality craftsmanship, UK delivery.",
+    "Discover premium beds, stylish sofas and elegant dining furniture at LUXA FURNITURE. Explore beautiful furniture collections for your home across the UK.",
   keywords: [
     "LUXA FURNITURE",
-    "luxury furniture UK",
+    "luxury beds UK",
     "premium sofas UK",
-    "furniture store UK",
-    "sofa",
-    "bed",
-    "dining table",
-    "home decor",
+    "dining tables and chairs",
+    "luxury bedroom furniture",
+    "modern living room furniture",
+    "sofa beds UK",
+    "luxury furniture store UK",
+    "British furniture",
   ],
   authors: [{ name: "LUXA FURNITURE" }],
   creator: "LUXA FURNITURE",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
   openGraph: {
     type: "website",
     locale: "en_GB",
     url: "/",
     siteName: "LUXA FURNITURE",
-    title: "LUXA FURNITURE — Premium Furniture for Every UK Home",
+    title: "LUXA FURNITURE | Luxury Beds, Sofas & Dining Furniture UK",
     description:
-      "Shop premium sofas, chairs, tables and furniture sets at LUXA FURNITURE. Quality craftsmanship, UK delivery.",
+      "Discover premium beds, stylish sofas and elegant dining furniture at LUXA FURNITURE. Explore beautiful furniture collections for your home across the UK.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "LUXA FURNITURE — Premium Furniture for Every UK Home",
+    title: "LUXA FURNITURE | Luxury Beds, Sofas & Dining Furniture UK",
     description:
-      "Shop premium sofas, chairs, tables and furniture sets at LUXA FURNITURE.",
+      "Discover premium beds, stylish sofas and elegant dining furniture at LUXA FURNITURE. Explore beautiful furniture collections for your home across the UK.",
     creator: "@LuxaFurniture",
   },
   robots: {
