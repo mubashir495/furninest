@@ -67,7 +67,7 @@ function getSessionStatus(request: NextRequest): {
   return { isAuthenticated: false };
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Forward legacy /admin/login to /auth/login
