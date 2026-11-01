@@ -11,17 +11,54 @@ import { ProductGrid } from '@/components/products/ProductGrid';
 export const revalidate = 3600; // ISR: 1-hour caching
 export const dynamicParams = true;
 
+const siteUrl = 'https://luxafurniture.com';
+
+function toAbsoluteUrl(url?: string | null): string {
+  if (!url) return `${siteUrl}/logo.png`;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `${siteUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const category = await getCategoryBySlug(slug);
-  if (!category) return { title: 'Category not found' };
+  if (!category) return { title: 'Category Not Found | Luxa Furniture' };
+
+  const title = `${category.name} | Luxa Furniture`;
+  const description =
+    category.description ||
+    `Browse premium ${category.name} furniture at Luxa Furniture. Explore dining tables, sofas, beds, and handcrafted home collections.`;
+  const imageUrl = toAbsoluteUrl(category.image);
+  const isFallback = !category.image;
 
   return {
-    title: `${category.name} | LUXA FURNITURE`,
-    description: category.description || `Browse ${category.name} furniture at LUXA FURNITURE.`,
+    title,
+    description,
     alternates: { canonical: `/category/${slug}` },
+    openGraph: {
+      type: 'website',
+      url: `${siteUrl}/category/${slug}`,
+      siteName: 'Luxa Furniture',
+      title,
+      description,
+      locale: 'en_PK',
+      images: [
+        {
+          url: imageUrl,
+          width: isFallback ? 512 : 1200,
+          height: isFallback ? 512 : 630,
+          alt: category.name,
+        },
+      ],
+    },
+    twitter: {
+      card: isFallback ? 'summary' : 'summary_large_image',
+      title,
+      description,
+      images: [imageUrl],
+    },
   };
 }
 

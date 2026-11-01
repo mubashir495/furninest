@@ -5,15 +5,34 @@ import { Hammer, Leaf, HeartHandshake, Sparkles } from 'lucide-react';
 import { TrustBadges } from '@/components/comman/TrustBadges';
 
 export const metadata: Metadata = {
-  title: 'About Us | LUXA FURNITURE',
+  title: 'About Us | Luxa Furniture',
   description:
-    'LUXA FURNITURE is a premier UK destination for luxury beds, premium sofas, and elegant dining furniture crafted to last.',
+    'Luxa Furniture is a premier destination for luxury beds, premium sofas, and elegant dining furniture crafted to last.',
   alternates: { canonical: '/about' },
   openGraph: {
-    title: 'About LUXA FURNITURE',
-    description: 'Luxury beds, premium sofas & dining furniture crafted for elegant UK homes.',
+    title: 'About Us | Luxa Furniture',
+    description:
+      'Luxa Furniture is a premier destination for luxury beds, premium sofas, and elegant dining furniture crafted to last.',
     type: 'website',
-    url: '/about',
+    url: 'https://luxafurniture.com/about',
+    siteName: 'Luxa Furniture',
+    locale: 'en_PK',
+    images: [
+      {
+        url: '/logo.png',
+        width: 512,
+        height: 512,
+        alt: 'Luxa Furniture Logo',
+        type: 'image/png',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'About Us | Luxa Furniture',
+    description:
+      'Luxa Furniture is a premier destination for luxury beds, premium sofas, and elegant dining furniture crafted to last.',
+    images: ['/logo.png'],
   },
 };
 

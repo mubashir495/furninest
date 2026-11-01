@@ -11,17 +11,45 @@ import { Category } from '@/Type/category';
 export const revalidate = 3600; // ISR: 1-hour caching
 export const dynamicParams = true;
 
+const siteUrl = 'https://luxafurniture.com';
+
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const subCategory = await getSubCategoryBySlug(slug);
-  if (!subCategory) return { title: 'Subcategory not found' };
+  if (!subCategory) return { title: 'Subcategory Not Found | Luxa Furniture' };
+
+  const title = `${subCategory.name} | Luxa Furniture`;
+  const description = `Shop luxury ${subCategory.name} furniture at Luxa Furniture. Handcrafted designs and premium home furnishings.`;
+  const imageUrl = `${siteUrl}/logo.png`;
 
   return {
-    title: `${subCategory.name} | LUXA FURNITURE`,
-    description: `Shop ${subCategory.name} furniture at LUXA FURNITURE.`,
+    title,
+    description,
     alternates: { canonical: `/subcategory/${slug}` },
+    openGraph: {
+      type: 'website',
+      url: `${siteUrl}/subcategory/${slug}`,
+      siteName: 'Luxa Furniture',
+      title,
+      description,
+      locale: 'en_PK',
+      images: [
+        {
+          url: imageUrl,
+          width: 512,
+          height: 512,
+          alt: subCategory.name,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary',
+      title,
+      description,
+      images: [imageUrl],
+    },
   };
 }
 

@@ -5,9 +5,9 @@ import { ShopClient } from '@/components/products/ShopClient';
 export const revalidate = 3600; // ISR: 1-hour caching
 
 export const metadata: Metadata = {
-  title: 'Our Collection | LUXA FURNITURE',
+  title: 'Our Collection | Luxa Furniture',
   description:
-    'Discover luxury beds, premium sofas, dining tables and chairs at LUXA FURNITURE. Quality craftsmanship with UK delivery.',
+    'Discover luxury beds, premium sofas, dining tables and chairs at Luxa Furniture. Quality craftsmanship and handcrafted home furniture.',
   alternates: { canonical: '/shop' },
 };
 

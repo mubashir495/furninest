@@ -21,51 +21,57 @@ const playfair = Playfair_Display({
   display: "swap",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://luxafurniture.co.uk";
+const siteUrl = "https://luxafurniture.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "LUXA FURNITURE | Luxury Beds, Sofas & Dining Furniture UK",
-    template: "%s | LUXA FURNITURE",
+    default: "Luxa Furniture | Luxury Beds, Sofas & Dining Furniture",
+    template: "%s | Luxa Furniture",
   },
   description:
-    "Discover premium beds, stylish sofas and elegant dining furniture at LUXA FURNITURE. Explore beautiful furniture collections for your home across the UK.",
+    "Discover premium handcrafted furniture at Luxa Furniture. Explore luxury dining tables, elegant sofas, bespoke beds, and contemporary home furniture collections.",
   keywords: [
-    "LUXA FURNITURE",
-    "luxury beds UK",
-    "premium sofas UK",
-    "dining tables and chairs",
-    "luxury bedroom furniture",
-    "modern living room furniture",
-    "sofa beds UK",
-    "luxury furniture store UK",
-    "British furniture",
+    "Luxa Furniture",
+    "luxury furniture",
+    "dining tables",
+    "sofas",
+    "luxury beds",
+    "home furniture",
+    "modern furniture",
+    "dining chairs",
   ],
-  authors: [{ name: "LUXA FURNITURE" }],
-  creator: "LUXA FURNITURE",
+  authors: [{ name: "Luxa Furniture" }],
+  creator: "Luxa Furniture",
   icons: {
-    icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-    ],
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
   },
   openGraph: {
     type: "website",
-    locale: "en_GB",
-    url: "/",
-    siteName: "LUXA FURNITURE",
-    title: "LUXA FURNITURE | Luxury Beds, Sofas & Dining Furniture UK",
+    url: siteUrl,
+    siteName: "Luxa Furniture",
+    title: "Luxa Furniture | Luxury Beds, Sofas & Dining Furniture",
     description:
-      "Discover premium beds, stylish sofas and elegant dining furniture at LUXA FURNITURE. Explore beautiful furniture collections for your home across the UK.",
+      "Discover premium handcrafted furniture at Luxa Furniture. Explore luxury dining tables, elegant sofas, bespoke beds, and contemporary home furniture collections.",
+    locale: "en_PK",
+    images: [
+      {
+        url: "/logo.png",
+        width: 512,
+        height: 512,
+        alt: "Luxa Furniture Logo",
+        type: "image/png",
+      },
+    ],
   },
   twitter: {
-    card: "summary_large_image",
-    title: "LUXA FURNITURE | Luxury Beds, Sofas & Dining Furniture UK",
+    card: "summary",
+    title: "Luxa Furniture | Luxury Beds, Sofas & Dining Furniture",
     description:
-      "Discover premium beds, stylish sofas and elegant dining furniture at LUXA FURNITURE. Explore beautiful furniture collections for your home across the UK.",
-    creator: "@LuxaFurniture",
+      "Discover premium handcrafted furniture at Luxa Furniture. Explore luxury dining tables, elegant sofas, bespoke beds, and contemporary home furniture collections.",
+    images: ["/logo.png"],
   },
   robots: {
     index: true,

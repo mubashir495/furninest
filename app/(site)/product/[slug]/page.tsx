@@ -19,31 +19,59 @@ export async function generateStaticParams() {
   return slugs.map((slug) => ({ slug }));
 }
 
+const siteUrl = 'https://luxafurniture.com';
+
+function toAbsoluteUrl(url?: string | null): string {
+  if (!url) return `${siteUrl}/logo.png`;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `${siteUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
-  if (!product) return { title: 'Product not found' };
+  if (!product) return { title: 'Product Not Found | Luxa Furniture' };
 
+  const title = product.seoTitle || `${product.name} | Luxa Furniture`;
   const description = (
     product.seoDescription ||
     product.shortDescription ||
     product.longDescription ||
-    ''
+    `Explore ${product.name} at Luxa Furniture. Luxury craftsmanship, elegant design, and premium comfort for your home.`
   ).slice(0, 170);
 
+  const rawImage = product.thumbnailImage || product.images?.[0];
+  const imageUrl = toAbsoluteUrl(rawImage);
+  const isFallback = !rawImage;
+
   return {
-    title: product.seoTitle || `${product.name} | LUXA FURNITURE`,
+    title,
     description,
     alternates: { canonical: `/product/${slug}` },
     openGraph: {
-      title: product.name,
-      description,
-      images: product.thumbnailImage ? [{ url: product.thumbnailImage }] : [],
       type: 'website',
+      url: `${siteUrl}/product/${slug}`,
+      siteName: 'Luxa Furniture',
+      title,
+      description,
+      locale: 'en_PK',
+      images: [
+        {
+          url: imageUrl,
+          width: isFallback ? 512 : 1200,
+          height: isFallback ? 512 : 630,
+          alt: product.name,
+        },
+      ],
     },
-    twitter: { card: 'summary_large_image', title: product.name, description },
+    twitter: {
+      card: isFallback ? 'summary' : 'summary_large_image',
+      title,
+      description,
+      images: [imageUrl],
+    },
   };
 }
 
@@ -91,7 +119,7 @@ export default async function ProductDetailPage({ params }: Props) {
       availability: seoInStock
         ? 'https://schema.org/InStock'
         : 'https://schema.org/OutOfStock',
-      url: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://luxafurniture.co.uk'}/product/${slug}`,
+      url: `${process.env.NEXT_PUBLIC_SITE_URL ?? siteUrl}/product/${slug}`,
     },
   };
 

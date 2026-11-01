@@ -4,8 +4,8 @@ import { ContactForm } from '@/components/contact/ContactForm';
 import { BsWhatsapp } from 'react-icons/bs';
 
 export const metadata: Metadata = {
-  title: 'Contact Us | LUXA FURNITURE',
-  description: 'Have a question about an order, a product, or anything else? Get in touch with the LUXA FURNITURE team.',
+  title: 'Contact Us | Luxa Furniture',
+  description: 'Have a question about an order, a product, or anything else? Get in touch with the Luxa Furniture team.',
   alternates: { canonical: '/contact' },
 };
 

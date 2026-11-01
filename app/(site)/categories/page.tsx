@@ -5,9 +5,9 @@ import { CategoryList } from '@/components/categories/CategoryList';
 export const revalidate = 3600; // ISR: 1-hour caching
 
 export const metadata: Metadata = {
-  title: 'All Categories | LUXA FURNITURE',
+  title: 'All Categories | Luxa Furniture',
   description:
-    'Explore luxury beds, premium sofas, dining tables and living room furniture categories at LUXA FURNITURE.',
+    'Explore luxury beds, premium sofas, dining tables and living room furniture categories at Luxa Furniture.',
   alternates: { canonical: '/categories' },
 };
 

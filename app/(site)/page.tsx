@@ -11,16 +11,36 @@ import { ProductCarousel } from '@/components/products/ProductCarousel';
 export const revalidate = 3600; // ISR: catalog rebuilds at most every 1 hour or on-demand
 
 export const metadata: Metadata = {
-  title: 'LUXA FURNITURE | Luxury Beds, Sofas & Dining Furniture UK',
+  title: {
+    absolute: 'Luxa Furniture | Luxury Beds, Sofas & Dining Furniture',
+  },
   description:
-    'Discover premium beds, stylish sofas and elegant dining furniture at LUXA FURNITURE. Explore beautiful furniture collections for your home across the UK.',
+    'Discover premium handcrafted furniture at Luxa Furniture. Explore luxury dining tables, elegant sofas, bespoke beds, and contemporary home furniture collections.',
   alternates: { canonical: '/' },
   openGraph: {
-    title: 'LUXA FURNITURE | Luxury Beds, Sofas & Dining Furniture UK',
-    description:
-      'Discover premium beds, stylish sofas and elegant dining furniture at LUXA FURNITURE. Explore beautiful furniture collections for your home across the UK.',
     type: 'website',
-    url: '/',
+    url: 'https://luxafurniture.com',
+    siteName: 'Luxa Furniture',
+    title: 'Luxa Furniture | Luxury Beds, Sofas & Dining Furniture',
+    description:
+      'Discover premium handcrafted furniture at Luxa Furniture. Explore luxury dining tables, elegant sofas, bespoke beds, and contemporary home furniture collections.',
+    locale: 'en_PK',
+    images: [
+      {
+        url: '/logo.png',
+        width: 512,
+        height: 512,
+        alt: 'Luxa Furniture Logo',
+        type: 'image/png',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Luxa Furniture | Luxury Beds, Sofas & Dining Furniture',
+    description:
+      'Discover premium handcrafted furniture at Luxa Furniture. Explore luxury dining tables, elegant sofas, bespoke beds, and contemporary home furniture collections.',
+    images: ['/logo.png'],
   },
 };
 
