@@ -1,82 +1,104 @@
 'use client';
 
-import React, { useEffect, useState, useTransition, use } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  Sparkles,
-  ArrowLeft,
-  RefreshCw,
-  Save,
-  CheckCircle2,
-  Globe,
-  RotateCcw,
-  AlertTriangle,
-  AlertCircle,
-  Layers,
-  Plus,
-  Trash2,
-  Eye,
-  Info,
-  Clock,
-  Loader2,
-  Image as ImageIcon,
-  Check,
-} from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  ArrowLeft,
+  Sparkles,
+  Save,
+  CheckCircle,
+  Send,
+  RefreshCw,
+  Loader2,
+  AlertCircle,
+  AlertTriangle,
+  X,
+  Tag,
+  Package,
+  Layers,
+  ShieldCheck,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { StatusBadge } from '@/components/admin/listing-agent/StatusBadge';
 import { listingAgentService } from '@/services/listingAgentService';
 import {
   ListingDraft,
   ListingDraftStatus,
-  ListingDraftFormValues,
   listingDraftFormSchema,
+  ListingDraftFormValues,
 } from '@/Type/listing-agent';
 
-interface PageProps {
-  params: Promise<{ id: string }>;
+const POLL_INTERVAL_MS = 3000;
+const POLL_STATUSES: ListingDraftStatus[] = ['queued', 'analyzing'];
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
-export default function ListingDraftDetailPage({ params }: PageProps) {
-  const { id } = use(params);
+function ConfidenceBar({ value }: { value: number }) {
+  const pct = Math.round(value * 100);
+  const color = pct >= 80 ? 'bg-emerald-500' : pct >= 60 ? 'bg-amber-500' : 'bg-rose-500';
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-xs font-semibold tabular-nums">{pct}%</span>
+    </div>
+  );
+}
+
+function CharCounter({ current, max }: { current: number; max: number }) {
+  const over = current > max;
+  return (
+    <span
+      className={`text-xs tabular-nums ${
+        over ? 'text-destructive font-semibold' : 'text-muted-foreground'
+      }`}
+    >
+      {current}/{max}
+    </span>
+  );
+}
+
+export default function DraftDetailPage() {
+  const params = useParams<{ id: string }>();
   const router = useRouter();
+  const id = params.id;
 
   const [draft, setDraft] = useState<ListingDraft | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
-  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
-  const [tagInput, setTagInput] = useState('');
+  const [newTag, setNewTag] = useState('');
 
-  // Setup Form
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const {
     register,
     control,
     handleSubmit,
     reset,
     watch,
-    setValue,
-    formState: { errors, isDirty, isValid },
+    formState: { errors, isDirty },
   } = useForm<ListingDraftFormValues>({
-    resolver: zodResolver(listingDraftFormSchema),
+    resolver: zodResolver(listingDraftFormSchema) as any,
     defaultValues: {
       title: '',
       slug: '',
@@ -85,141 +107,130 @@ export default function ListingDraftDetailPage({ params }: PageProps) {
       tags: [],
       calculatedPrice: 0,
       compareAtPrice: null,
+      fireSafetyLabelConfirmed: false,
+      stockLocation: 'UK warehouse',
       variants: [],
     },
-    mode: 'onChange',
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields: tagFields, append: appendTag, remove: removeTag } = useFieldArray({
     control,
-    name: 'variants',
+    name: 'tags' as any,
   });
 
-  // Watch fields for character counters
   const watchedTitle = watch('title') || '';
   const watchedMeta = watch('metaDescription') || '';
   const watchedTags = watch('tags') || [];
-  const watchedPrice = watch('calculatedPrice') || 0;
-  const watchedVariants = watch('variants') || [];
 
-  // Fetch draft data
-  const loadDraft = async (silent = false) => {
-    if (!silent) setIsLoading(true);
-    try {
-      const data = await listingAgentService.getDraft(id);
-      setDraft(data);
+  const loadDraft = useCallback(
+    async (silent = false) => {
+      if (!silent) setIsLoading(true);
+      setLoadError(null);
+      try {
+        const data = await listingAgentService.getDraft(id);
+        setDraft(data);
 
-      // Populate form when data is ready
-      reset({
-        title: data.seo?.title || '',
-        slug: data.seo?.slug || '',
-        metaDescription: data.seo?.metaDescription || '',
-        description: data.seo?.description || '',
-        tags: data.seo?.tags || [],
-        calculatedPrice: data.pricing?.calculatedPrice || data.costPrice * 1.4 || 0,
-        compareAtPrice: data.pricing?.compareAtPrice || null,
-        variants: (data.variants || []).map((v) => ({
-          _id: v._id,
-          configName: v.configName || 'Standard',
-          colorName: v.colorName || 'Default',
-          colorHex: v.colorHex || '',
-          sku: v.sku || '',
-          price: v.price || 0,
-          compareAtPrice: v.compareAtPrice || null,
-          stock: v.stock !== undefined ? v.stock : 0,
-          dimensions: v.dimensions || '',
-          material: v.material || '',
-          images: v.images || [],
-          needsPhoto: !!v.needsPhoto,
-          suggested: v.suggested !== undefined ? v.suggested : true,
-          isActive: !!v.isActive,
-        })),
-      });
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to load listing draft.');
-    } finally {
-      if (!silent) setIsLoading(false);
-    }
-  };
+        if (data.seo || data.pricing || (data.variants && data.variants.length > 0)) {
+          reset({
+            title: data.seo?.title || '',
+            slug: data.seo?.slug || '',
+            metaDescription: data.seo?.metaDescription || '',
+            description: data.seo?.description || '',
+            tags: data.seo?.tags || [],
+            calculatedPrice: data.pricing?.calculatedPrice || 0,
+            compareAtPrice: data.pricing?.compareAtPrice ?? null,
+            fireSafetyLabelConfirmed: data.fireSafetyLabelConfirmed || false,
+            stockLocation: data.stockLocation || 'UK warehouse',
+            variants: (data.variants || []).map((v) => ({
+              _id: v._id,
+              configName: v.configName,
+              colorName: v.colorName,
+              colorHex: v.colorHex || '',
+              sku: v.sku,
+              price: v.price,
+              compareAtPrice: v.compareAtPrice ?? null,
+              stock: v.stock,
+              dimensions: v.dimensions || '',
+              material: v.material || '',
+              images: v.images || [],
+              needsPhoto: v.needsPhoto || false,
+              suggested: v.suggested !== false,
+              isActive: v.isActive || false,
+            })),
+          });
+        }
+      } catch (err: any) {
+        setLoadError(err?.message || 'Failed to load draft.');
+      } finally {
+        if (!silent) setIsLoading(false);
+      }
+    },
+    [id, reset],
+  );
 
   useEffect(() => {
     loadDraft();
-  }, [id]);
+  }, [loadDraft]);
 
-  // Polling every 3s while status is queued or analyzing
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (draft?.status === 'queued' || draft?.status === 'analyzing') {
-      interval = setInterval(() => {
+    if (!draft) return;
+
+    if (POLL_STATUSES.includes(draft.status)) {
+      pollRef.current = setInterval(() => {
         loadDraft(true);
-      }, 3000);
+      }, POLL_INTERVAL_MS);
+    } else {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
     }
+
     return () => {
-      if (interval) clearInterval(interval);
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
     };
-  }, [draft?.status, id]);
+  }, [draft?.status, loadDraft]);
 
-  // Add Tag chip
-  const handleAddTag = () => {
-    const trimmed = tagInput.trim().toLowerCase();
-    if (!trimmed) return;
-    if (!watchedTags.includes(trimmed)) {
-      setValue('tags', [...watchedTags, trimmed], { shouldDirty: true, shouldValidate: true });
-    }
-    setTagInput('');
-  };
-
-  // Remove Tag chip
-  const handleRemoveTag = (tagToRemove: string) => {
-    setValue(
-      'tags',
-      watchedTags.filter((t) => t !== tagToRemove),
-      { shouldDirty: true, shouldValidate: true },
-    );
-  };
-
-  // Save changes (PATCH)
-  const onSave = async (data: ListingDraftFormValues) => {
+  const onSave = async (values: ListingDraftFormValues) => {
     setIsSaving(true);
     try {
-      const updated = await listingAgentService.updateDraft(id, {
+      const payload = {
         seo: {
-          title: data.title,
-          slug: data.slug,
-          metaDescription: data.metaDescription,
-          description: data.description,
-          tags: data.tags,
+          title: values.title,
+          slug: values.slug,
+          metaDescription: values.metaDescription,
+          description: values.description,
+          tags: values.tags,
         },
         pricing: {
-          costPrice: draft?.costPrice || 0,
-          marginRate: draft?.pricing?.marginRate || 0.4,
-          calculatedPrice: data.calculatedPrice,
-          compareAtPrice: data.compareAtPrice || null,
+          ...(draft?.pricing || {}),
+          calculatedPrice: values.calculatedPrice,
+          compareAtPrice: values.compareAtPrice,
         },
-        variants: data.variants,
-      });
-
+        fireSafetyLabelConfirmed: values.fireSafetyLabelConfirmed,
+        stockLocation: values.stockLocation,
+        variants: values.variants,
+      };
+      const updated = await listingAgentService.updateDraft(id, payload as any);
       setDraft(updated);
-      reset(data); // mark form as pristine
-      toast.success('Listing draft changes saved successfully!');
+      reset(values);
+      toast.success('Draft saved successfully.');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to save draft changes.');
+      toast.error(err?.message || 'Failed to save draft.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Approve Draft
   const handleApprove = async () => {
-    if (isDirty) {
-      toast.warning('Please save your changes before approving the draft.');
-      return;
-    }
     setIsApproving(true);
     try {
       const updated = await listingAgentService.approveDraft(id);
       setDraft(updated);
-      toast.success('Draft approved! Ready to publish to live store.');
+      toast.success('Draft approved! Ready to publish.');
     } catch (err: any) {
       toast.error(err?.message || 'Failed to approve draft.');
     } finally {
@@ -227,53 +238,25 @@ export default function ListingDraftDetailPage({ params }: PageProps) {
     }
   };
 
-  // Check before opening publish dialog
-  const handleOpenPublishDialog = () => {
-    // Technical rule: Block Publish if any active variant has stock 0 or price missing
-    const activeVariants = watchedVariants.filter((v) => v.isActive);
-
-    if (activeVariants.length === 0) {
-      toast.error('Cannot publish: At least one variant must be active (Is Active = ON).');
-      return;
-    }
-
-    const invalidStockOrPrice = activeVariants.filter(
-      (v) => !v.price || v.price <= 0 || v.stock === undefined || v.stock <= 0,
-    );
-
-    if (invalidStockOrPrice.length > 0) {
-      toast.error(
-        `Cannot publish: ${invalidStockOrPrice.length} active variant(s) have Stock of 0 or missing price. Please allocate stock and verify pricing before publishing.`,
-        { duration: 5000 },
-      );
-      return;
-    }
-
-    setPublishDialogOpen(true);
-  };
-
-  // Publish Draft
-  const handleConfirmPublish = async () => {
+  const handlePublish = async () => {
     setIsPublishing(true);
     try {
-      const result = await listingAgentService.publishDraft(id);
-      toast.success('Product successfully published to live store!');
-      setPublishDialogOpen(false);
-      await loadDraft(true);
+      toast.loading('Publishing product to store...', { id: 'publish' });
+      await listingAgentService.publishDraft(id);
+      toast.success('Product published successfully!', { id: 'publish' });
+      router.push('/admin/listing-agent');
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to publish product.');
-    } finally {
+      toast.error(err?.message || 'Failed to publish product.', { id: 'publish' });
       setIsPublishing(false);
     }
   };
 
-  // Retry / Regenerate Draft
   const handleRetry = async () => {
     setIsRetrying(true);
     try {
       const updated = await listingAgentService.retryDraft(id);
       setDraft(updated);
-      toast.info('Draft re-queued for AI analysis.');
+      toast.success('Draft re-queued for AI processing.');
     } catch (err: any) {
       toast.error(err?.message || 'Failed to retry draft.');
     } finally {
@@ -281,876 +264,643 @@ export default function ListingDraftDetailPage({ params }: PageProps) {
     }
   };
 
-  if (isLoading || !draft) {
+  const handleAddTag = () => {
+    const trimmed = newTag.trim().toLowerCase();
+    if (trimmed && !watchedTags.includes(trimmed)) {
+      appendTag(trimmed as any);
+    }
+    setNewTag('');
+  };
+
+  if (isLoading) {
     return (
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center gap-3">
-          <Link href="/admin/listing-agent">
-            <Button variant="outline" size="sm" className="rounded-xl">
-              <ArrowLeft size={16} />
-            </Button>
-          </Link>
-          <div className="h-6 w-48 bg-muted animate-pulse rounded-md" />
-        </div>
-        <LoadingSkeleton rows={5} />
+      <div className="max-w-5xl mx-auto space-y-6">
+        <div className="h-8 bg-muted rounded-xl w-48 animate-pulse" />
+        <div className="h-64 bg-muted rounded-3xl animate-pulse" />
+        <div className="h-96 bg-muted rounded-3xl animate-pulse" />
       </div>
     );
   }
 
-  const isQueuedOrAnalyzing = draft.status === 'queued' || draft.status === 'analyzing';
-  const isFailed = draft.status === 'failed';
-  const isApproved = draft.status === 'approved';
-  const isPublished = draft.status === 'published';
-
-  return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-24">
-      {/* Top Bar Navigation & Status */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-4">
-        <div className="flex items-center gap-3">
-          <Link href="/admin/listing-agent">
-            <Button variant="outline" size="sm" className="rounded-xl gap-2">
-              <ArrowLeft size={16} />
-              Drafts
+  if (loadError || !draft) {
+    return (
+      <div className="max-w-5xl mx-auto">
+        <div className="rounded-2xl border border-destructive/20 bg-destructive/5 p-8 text-center space-y-4">
+          <AlertCircle className="mx-auto text-destructive" size={36} />
+          <p className="text-sm text-destructive font-medium">{loadError || 'Draft not found.'}</p>
+          <div className="flex items-center justify-center gap-3">
+            <Button variant="outline" onClick={() => loadDraft()} className="rounded-xl gap-2">
+              <RefreshCw size={14} /> Try Again
             </Button>
-          </Link>
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl font-serif font-bold text-foreground">
-                {draft.seo?.title || `${draft.analysis?.category || 'Furniture'} Draft`}
-              </h1>
-              <StatusBadge status={draft.status} />
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Draft ID: <code className="bg-muted px-1.5 py-0.5 rounded text-[11px]">{draft._id}</code>
-            </p>
+            <Link href="/admin/listing-agent">
+              <Button variant="outline" className="rounded-xl gap-2">
+                <ArrowLeft size={14} /> Back
+              </Button>
+            </Link>
           </div>
         </div>
+      </div>
+    );
+  }
 
-        {/* Top Actions */}
-        <div className="flex items-center gap-2">
-          {isQueuedOrAnalyzing && (
-            <div className="flex items-center gap-2 text-xs text-purple-700 dark:text-purple-300 font-medium bg-purple-50 dark:bg-purple-950/40 px-3 py-1.5 rounded-xl border border-purple-200 dark:border-purple-800">
-              <Loader2 size={14} className="animate-spin" />
-              <span>Polling every 3s...</span>
-            </div>
-          )}
+  const isProcessing = POLL_STATUSES.includes(draft.status);
+  const canEdit = ['pending_approval', 'approved'].includes(draft.status);
+  const canApprove = draft.status === 'pending_approval';
+  const canPublish = draft.status === 'approved';
+  const isFailed = draft.status === 'failed';
+  const isPublished = draft.status === 'published';
 
+  const pageTitle = draft.seo?.title || `Draft #${id.slice(-6).toUpperCase()}`;
+
+  return (
+    <div className="max-w-5xl mx-auto space-y-6 pb-32">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-5">
+        <div>
+          <Link
+            href="/admin/listing-agent"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
+          >
+            <ArrowLeft size={14} /> Back to Listing Agent
+          </Link>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-xl font-serif font-bold text-foreground truncate max-w-sm">
+              {pageTitle}
+            </h1>
+            <StatusBadge status={draft.status} />
+            <span className="text-xs bg-muted text-muted-foreground font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
+              🇬🇧 UK Market (GBP £)
+            </span>
+            {draft.reviewRequired && (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-700 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-lg">
+                <AlertTriangle size={11} /> Review Required
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Updated {formatDate(draft.updatedAt)}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             size="sm"
-            onClick={() => loadDraft(false)}
+            onClick={() => loadDraft(true)}
             className="rounded-xl gap-1.5"
-            title="Refresh Draft"
           >
-            <RefreshCw size={14} />
-            Refresh
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRetry}
-            disabled={isRetrying || isQueuedOrAnalyzing}
-            className="rounded-xl gap-1.5"
-            title="Re-run AI pipeline"
-          >
-            <RotateCcw size={14} className={isRetrying ? 'animate-spin' : ''} />
-            Regenerate
+            <RefreshCw size={13} /> Refresh
           </Button>
         </div>
       </div>
 
-      {/* Progress State while Queued or Analyzing */}
-      {isQueuedOrAnalyzing && (
-        <div className="bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800 rounded-3xl p-6 text-center space-y-4">
-          <div className="mx-auto w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 flex items-center justify-center animate-bounce">
-            <Sparkles size={24} />
+      {/* Processing State */}
+      {isProcessing && (
+        <div className="bg-card rounded-3xl border border-border p-10 text-center space-y-4 shadow-xs">
+          <div className="mx-auto w-16 h-16 rounded-full bg-accent/15 flex items-center justify-center">
+            <Sparkles size={28} className="text-accent animate-pulse" />
           </div>
-          <div>
-            <h3 className="text-base font-semibold text-purple-900 dark:text-purple-200">
-              {draft.status === 'queued'
-                ? 'Draft Queued in Processing Pipeline'
-                : 'Gemini Vision AI is Analyzing Your Furniture Photos'}
-            </h3>
-            <p className="text-xs text-purple-700 dark:text-purple-300 max-w-md mx-auto mt-1">
-              Extracting physical features, visible materials, aesthetics, and seating. Pricing,
-              SEO descriptions, and configuration variants are being computed in parallel.
-            </p>
-          </div>
-          <div className="w-full max-w-md mx-auto bg-purple-200/60 dark:bg-purple-900/60 h-2 rounded-full overflow-hidden">
-            <div className="bg-purple-600 h-full rounded-full animate-pulse w-3/4" />
+          <h2 className="text-lg font-semibold text-foreground">
+            {draft.status === 'queued' ? 'Queued for Claude AI Processing' : 'Claude AI Analysing & Generating Listing…'}
+          </h2>
+          <p className="text-sm text-muted-foreground max-w-md mx-auto">
+            {draft.status === 'queued'
+              ? 'Your draft is queued for background processing.'
+              : 'Claude is analysing your product photos, extracting specifications, calculating optimal pricing, and drafting SEO-optimised content.'}
+          </p>
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <Loader2 size={13} className="animate-spin" />
+            <span>Auto-refreshing every 3 seconds…</span>
           </div>
         </div>
       )}
 
-      {/* Error Banner when Failed */}
+      {/* Failed State */}
       {isFailed && (
-        <div className="bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle size={20} className="text-rose-600 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="text-sm font-semibold text-rose-900 dark:text-rose-200">
-                AI Listing Pipeline Failed
-              </h4>
-              <p className="text-xs text-rose-700 dark:text-rose-300 mt-0.5">
-                {draft.error || 'An unexpected error occurred during processing.'}
-              </p>
-            </div>
+        <div className="bg-card rounded-3xl border border-destructive/30 bg-destructive/5 p-6 space-y-3">
+          <div className="flex items-center gap-2 text-destructive font-semibold">
+            <AlertCircle size={18} />
+            <span>AI Processing Failed</span>
           </div>
+          {draft.error && (
+            <p className="text-sm text-muted-foreground font-mono bg-muted rounded-xl px-3 py-2 break-all">
+              {draft.error}
+            </p>
+          )}
           <Button
-            size="sm"
             onClick={handleRetry}
             disabled={isRetrying}
-            className="rounded-xl gap-2 bg-rose-600 hover:bg-rose-700 text-white shrink-0"
+            className="rounded-xl gap-2"
+            variant="outline"
           >
-            <RotateCcw size={14} className={isRetrying ? 'animate-spin' : ''} />
-            Retry Analysis
+            {isRetrying ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+            Retry AI Processing
           </Button>
         </div>
       )}
 
-      {/* Review Required Warning Banner */}
-      {draft.reviewRequired && (
-        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-2xl p-4 flex items-center gap-3">
-          <AlertTriangle size={20} className="text-amber-600 shrink-0" />
-          <div className="text-xs text-amber-900 dark:text-amber-200">
-            <span className="font-semibold">Review Required:</span> Low AI confidence detected
-            (confidence score &lt; 60%). Please review materials, seating, and features carefully
-            before approval.
-          </div>
-        </div>
-      )}
-
-      {/* Published Notice */}
+      {/* Published Banner */}
       {isPublished && draft.publishedProductId && (
-        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5 text-xs text-blue-900 dark:text-blue-200 font-medium">
-            <CheckCircle2 size={18} className="text-blue-600" />
-            <span>This listing is live in the product catalog.</span>
+        <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-3xl border border-emerald-200 dark:border-emerald-800 p-5 flex items-center gap-3">
+          <CheckCircle size={20} className="text-emerald-600 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-emerald-800 dark:text-emerald-300">
+              Product Published in Catalogue
+            </p>
+            <p className="text-xs text-muted-foreground">Product ID: {draft.publishedProductId}</p>
           </div>
-          <Link
-            href={`/dashboard/products`}
-            className="text-xs font-semibold text-blue-700 dark:text-blue-300 hover:underline flex items-center gap-1"
-          >
-            <span>View in Products</span>
-            <Globe size={13} />
-          </Link>
         </div>
       )}
 
-      {/* Grid: Left Column (Gallery & Analysis) | Right Column (Editable Form) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Photos & Read-Only AI Analysis (4 cols) */}
-        <div className="lg:col-span-5 space-y-6">
-          {/* Source Images Gallery */}
-          <div className="bg-card rounded-3xl border border-border p-5 shadow-xs">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <ImageIcon size={16} className="text-accent" />
-                Source Photos ({draft.sourceImages?.length || 0})
-              </h2>
-              <span className="text-[11px] text-muted-foreground">Original upload</span>
-            </div>
-
-            {/* Main Preview */}
-            <div className="relative aspect-4/3 rounded-2xl overflow-hidden bg-muted border border-border mb-3">
-              {draft.sourceImages?.[selectedImageIndex] ? (
+      {/* Source Images */}
+      {draft.sourceImages && draft.sourceImages.length > 0 && (
+        <div className="bg-card rounded-3xl border border-border p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            Uploaded Photos
+            <span className="text-xs font-normal text-muted-foreground">
+              ({draft.sourceImages.length})
+            </span>
+          </h2>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {draft.sourceImages.map((url, idx) => (
+              <div
+                key={idx}
+                className="relative aspect-square rounded-2xl overflow-hidden border border-border bg-muted"
+              >
                 <Image
-                  src={draft.sourceImages[selectedImageIndex]}
-                  alt="Product view"
+                  src={url}
+                  alt={`Source photo ${idx + 1}`}
                   fill
-                  sizes="(max-width: 768px) 100vw, 400px"
+                  sizes="120px"
                   className="object-cover"
                 />
-              ) : (
-                <div className="h-full w-full flex items-center justify-center text-muted-foreground">
-                  No image available
-                </div>
-              )}
-            </div>
-
-            {/* Thumbnails */}
-            {draft.sourceImages && draft.sourceImages.length > 1 && (
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                {draft.sourceImages.map((img, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setSelectedImageIndex(idx)}
-                    className={`relative h-14 w-14 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${
-                      selectedImageIndex === idx
-                        ? 'border-accent shadow-xs scale-95'
-                        : 'border-border/60 opacity-70 hover:opacity-100'
-                    }`}
-                  >
-                    <Image src={img} alt={`Thumb ${idx + 1}`} fill className="object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Read-Only AI Analysis Panel */}
-          <div className="bg-card rounded-3xl border border-border p-5 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Sparkles size={16} className="text-accent" />
-                AI Visual Analysis
-              </h2>
-              {draft.analysis?.confidence !== undefined && (
-                <div className="flex items-center gap-1.5 text-xs font-semibold">
-                  <span className="text-muted-foreground">Confidence:</span>
-                  <span
-                    className={
-                      draft.analysis.confidence >= 0.8
-                        ? 'text-emerald-600'
-                        : draft.analysis.confidence >= 0.6
-                        ? 'text-amber-600'
-                        : 'text-rose-600'
-                    }
-                  >
-                    {(draft.analysis.confidence * 100).toFixed(0)}%
+                {idx === 0 && (
+                  <span className="absolute top-1 left-1 text-[9px] font-semibold bg-black/70 text-white px-1.5 py-0.5 rounded">
+                    Thumbnail
                   </span>
-                </div>
-              )}
-            </div>
-
-            {draft.analysis ? (
-              <div className="space-y-3 text-xs">
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div className="bg-muted/40 p-2.5 rounded-xl">
-                    <span className="text-muted-foreground block text-[11px]">Category</span>
-                    <span className="font-semibold text-foreground">
-                      {draft.analysis.category || '—'}
-                    </span>
-                  </div>
-                  <div className="bg-muted/40 p-2.5 rounded-xl">
-                    <span className="text-muted-foreground block text-[11px]">Aesthetic Style</span>
-                    <span className="font-semibold text-foreground">
-                      {draft.analysis.style || '—'}
-                    </span>
-                  </div>
-                  <div className="bg-muted/40 p-2.5 rounded-xl">
-                    <span className="text-muted-foreground block text-[11px]">Visible Color</span>
-                    <span className="font-semibold text-foreground">
-                      {draft.analysis.color || '—'}
-                    </span>
-                  </div>
-                  <div className="bg-muted/40 p-2.5 rounded-xl">
-                    <span className="text-muted-foreground block text-[11px]">Detected Seating</span>
-                    <span className="font-semibold text-foreground">
-                      {draft.analysis.seating != null ? `${draft.analysis.seating} Seats` : 'N/A'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="bg-muted/40 p-2.5 rounded-xl">
-                  <span className="text-muted-foreground block text-[11px] mb-1">
-                    Primary Material
-                  </span>
-                  <span className="font-medium text-foreground">
-                    {draft.analysis.material || '—'}
-                  </span>
-                </div>
-
-                {draft.analysis.features && draft.analysis.features.length > 0 && (
-                  <div>
-                    <span className="text-muted-foreground block text-[11px] mb-1.5 font-medium">
-                      Visible Physical Features (Verified in photos):
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {draft.analysis.features.map((feat, i) => (
-                        <span
-                          key={i}
-                          className="bg-accent/10 text-accent font-medium text-[11px] px-2 py-0.5 rounded-lg border border-accent/20"
-                        >
-                          {feat}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
                 )}
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground italic">
-                Analysis will appear once processing completes.
-              </p>
-            )}
+            ))}
           </div>
         </div>
+      )}
 
-        {/* Right Column: Editable Product Listing Form (7 cols) */}
-        <div className="lg:col-span-7 space-y-6">
-          <form onSubmit={handleSubmit(onSave)} className="space-y-6">
-            {/* SEO Content Card */}
-            <div className="bg-card rounded-3xl border border-border p-6 shadow-xs space-y-5">
-              <div className="flex items-center justify-between border-b border-border pb-3">
-                <h2 className="text-sm font-semibold text-foreground">Product Information & SEO</h2>
-                <span className="text-xs text-muted-foreground">Editable Form</span>
+      {/* Raw Notes Display */}
+      {draft.rawDetails && (
+        <div className="bg-card rounded-3xl border border-border p-5 space-y-2">
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            Raw Input / Seller Notes
+          </h2>
+          <p className="text-sm text-foreground bg-muted/40 rounded-xl p-3 whitespace-pre-wrap">
+            {draft.rawDetails}
+          </p>
+        </div>
+      )}
+
+      {/* AI Visual Analysis Summary */}
+      {draft.analysis && !isProcessing && (
+        <div className="bg-card rounded-3xl border border-border p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Sparkles size={14} className="text-accent" />
+              AI Extracted Attributes & Specifications
+            </h2>
+            <span className="text-xs text-muted-foreground">Claude Vision + Text</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'Category', value: draft.analysis.category },
+              { label: 'Material', value: draft.analysis.material },
+              { label: 'Color', value: draft.analysis.color },
+              { label: 'Style', value: draft.analysis.style },
+            ].map(({ label, value }) => (
+              <div key={label} className="bg-muted/50 rounded-2xl p-3">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                  {label}
+                </p>
+                <p className="text-sm font-semibold text-foreground mt-0.5 truncate">{value || '—'}</p>
               </div>
+            ))}
+          </div>
 
-              {/* Title with Counter */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-foreground">
-                    Product Title <span className="text-destructive">*</span>
-                  </label>
-                  <span
-                    className={`text-[11px] font-mono ${
-                      watchedTitle.length > 60
-                        ? 'text-destructive font-bold'
-                        : watchedTitle.length > 50
-                        ? 'text-amber-600'
-                        : 'text-muted-foreground'
-                    }`}
+          {draft.analysis.seating != null && (
+            <div className="bg-muted/50 rounded-2xl p-3 inline-flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                Seating Capacity
+              </span>
+              <span className="text-sm font-semibold text-foreground">
+                {draft.analysis.seating} Seater
+              </span>
+            </div>
+          )}
+
+          {draft.analysis.features && draft.analysis.features.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                Detected Features
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {draft.analysis.features.map((f, i) => (
+                  <span key={i} className="text-xs bg-muted text-foreground px-2.5 py-1 rounded-xl">
+                    {f}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {draft.analysis.specifications && draft.analysis.specifications.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                Specifications
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {draft.analysis.specifications.map((spec, i) => (
+                  <div
+                    key={i}
+                    className="flex justify-between items-center text-xs bg-muted/30 px-3 py-1.5 rounded-xl border border-border/50"
                   >
-                    {watchedTitle.length} / 60
-                  </span>
-                </div>
-                <Input
-                  {...register('title')}
-                  placeholder="e.g. Monaco Velvet 3-Seater Sofa"
-                  className="rounded-xl"
-                />
-                {errors.title && (
-                  <p className="text-xs text-destructive mt-1">{errors.title.message}</p>
-                )}
+                    <span className="text-muted-foreground font-medium">{spec.label}</span>
+                    <span className="text-foreground font-semibold">{spec.value}</span>
+                  </div>
+                ))}
               </div>
+            </div>
+          )}
 
-              {/* Slug */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5">
-                  URL Slug <span className="text-destructive">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-xs text-muted-foreground">
-                    /products/
-                  </span>
-                  <Input
-                    {...register('slug')}
-                    placeholder="monaco-velvet-3-seater-sofa"
-                    className="pl-22 rounded-xl text-xs font-mono"
-                  />
-                </div>
-                {errors.slug && (
-                  <p className="text-xs text-destructive mt-1">{errors.slug.message}</p>
-                )}
+          <div className="space-y-1">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+              Detection Confidence
+            </p>
+            <ConfidenceBar value={draft.analysis.confidence} />
+          </div>
+        </div>
+      )}
+
+      {/* Editable Listing Form */}
+      {(canEdit || isPublished) && draft.seo && (
+        <form onSubmit={handleSubmit(onSave)} className="space-y-5">
+          {/* Content Card */}
+          <div className="bg-card rounded-3xl border border-border p-5 space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-foreground">Listing Copy (Editable)</h2>
+              <span className="text-xs text-muted-foreground">
+                Output: British English
+              </span>
+            </div>
+
+            {/* Title */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-foreground">Title</label>
+                <CharCounter current={watchedTitle.length} max={60} />
               </div>
+              <Input
+                {...register('title')}
+                placeholder="Product title (max 60 characters)"
+                className="rounded-xl h-11"
+                disabled={isPublished}
+              />
+              {errors.title && (
+                <p className="text-xs text-destructive">{errors.title.message}</p>
+              )}
+            </div>
 
-              {/* Meta Description with Counter */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-semibold text-foreground">
-                    Meta Description <span className="text-destructive">*</span>
-                  </label>
+            {/* Slug */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">URL Slug (kebab-case)</label>
+              <Input
+                {...register('slug')}
+                placeholder="url-friendly-slug"
+                className="rounded-xl h-11 font-mono text-sm"
+                disabled={isPublished}
+              />
+              {errors.slug && <p className="text-xs text-destructive">{errors.slug.message}</p>}
+            </div>
+
+            {/* Meta Description */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-foreground">Meta Description</label>
+                <CharCounter current={watchedMeta.length} max={155} />
+              </div>
+              <textarea
+                {...register('metaDescription')}
+                rows={2}
+                placeholder="SEO meta description (max 155 characters)"
+                className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                disabled={isPublished}
+              />
+              {errors.metaDescription && (
+                <p className="text-xs text-destructive">{errors.metaDescription.message}</p>
+              )}
+            </div>
+
+            {/* Full Description */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Full Description</label>
+              <textarea
+                {...register('description')}
+                rows={7}
+                placeholder="Full product description..."
+                className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y leading-relaxed"
+                disabled={isPublished}
+              />
+              {errors.description && (
+                <p className="text-xs text-destructive">{errors.description.message}</p>
+              )}
+            </div>
+
+            {/* Tags */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                <Tag size={13} /> Keyword Tags
+              </label>
+              <div className="flex flex-wrap gap-1.5 min-h-8">
+                {watchedTags.map((tag, idx) => (
                   <span
-                    className={`text-[11px] font-mono ${
-                      watchedMeta.length > 155
-                        ? 'text-destructive font-bold'
-                        : watchedMeta.length > 140
-                        ? 'text-amber-600'
-                        : 'text-muted-foreground'
-                    }`}
+                    key={idx}
+                    className="inline-flex items-center gap-1 text-xs bg-muted text-foreground px-2.5 py-1 rounded-xl"
                   >
-                    {watchedMeta.length} / 155
-                  </span>
-                </div>
-                <textarea
-                  {...register('metaDescription')}
-                  rows={2}
-                  placeholder="Compelling 1-2 sentence search summary..."
-                  className="w-full text-xs rounded-xl border border-input bg-transparent p-3 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-                />
-                {errors.metaDescription && (
-                  <p className="text-xs text-destructive mt-1">{errors.metaDescription.message}</p>
-                )}
-              </div>
-
-              {/* Full Description */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5">
-                  Full Catalog Description <span className="text-destructive">*</span>
-                </label>
-                <textarea
-                  {...register('description')}
-                  rows={5}
-                  placeholder="Rich 2-3 paragraph product description..."
-                  className="w-full text-xs rounded-xl border border-input bg-transparent p-3 focus:outline-none focus:ring-1 focus:ring-ring transition-colors leading-relaxed"
-                />
-                {errors.description && (
-                  <p className="text-xs text-destructive mt-1">{errors.description.message}</p>
-                )}
-              </div>
-
-              {/* Tags (Chip Input) */}
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1.5">
-                  Search Tags ({watchedTags.length})
-                </label>
-                <div className="flex flex-wrap gap-1.5 p-2 rounded-xl border border-input bg-muted/20 min-h-12 items-center">
-                  {watchedTags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-flex items-center gap-1 text-xs bg-muted text-foreground px-2.5 py-1 rounded-lg border border-border"
-                    >
-                      <span>{tag}</span>
+                    #{tag}
+                    {!isPublished && (
                       <button
                         type="button"
-                        onClick={() => handleRemoveTag(tag)}
-                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => removeTag(idx)}
+                        className="text-muted-foreground hover:text-destructive transition-colors ml-1"
                       >
-                        ×
+                        <X size={10} />
                       </button>
-                    </span>
-                  ))}
-                  <input
-                    type="text"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
+                    )}
+                  </span>
+                ))}
+              </div>
+              {!isPublished && (
+                <div className="flex gap-2">
+                  <Input
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ',') {
+                      if (e.key === 'Enter') {
                         e.preventDefault();
                         handleAddTag();
                       }
                     }}
-                    placeholder={watchedTags.length === 0 ? 'Type tag and press Enter...' : '+ add...'}
-                    className="text-xs bg-transparent focus:outline-none px-2 py-1 flex-1 min-w-28 text-foreground"
+                    placeholder="Add a tag..."
+                    className="rounded-xl h-9 text-sm"
                   />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddTag}
+                    className="rounded-xl shrink-0"
+                    disabled={!newTag.trim()}
+                  >
+                    Add
+                  </Button>
                 </div>
-                {errors.tags && (
-                  <p className="text-xs text-destructive mt-1">{errors.tags.message}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Base Pricing Card */}
-            <div className="bg-card rounded-3xl border border-border p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-border pb-3">
-                <h2 className="text-sm font-semibold text-foreground">Base Catalog Pricing</h2>
-                <span className="text-xs bg-accent/15 text-accent font-semibold px-2 py-0.5 rounded-md">
-                  Ends in 999
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    Cost Price (Wholesale)
-                  </label>
-                  <div className="h-10 px-3 flex items-center bg-muted/50 rounded-xl text-sm font-semibold text-foreground border border-border/50">
-                    Rs. {draft.costPrice.toLocaleString()}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">
-                    Calculated Selling Price <span className="text-destructive">*</span>
-                  </label>
-                  <Input
-                    type="number"
-                    {...register('calculatedPrice')}
-                    className="rounded-xl h-10 font-semibold"
-                  />
-                  {errors.calculatedPrice && (
-                    <p className="text-xs text-destructive mt-1">
-                      {errors.calculatedPrice.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1">
-                    Compare At Price (Sale / MSRP)
-                  </label>
-                  <Input
-                    type="number"
-                    {...register('compareAtPrice')}
-                    placeholder="Optional"
-                    className="rounded-xl h-10"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Variants Editor Card */}
-            <div className="bg-card rounded-3xl border border-border p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-border pb-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-foreground">
-                    Product Variants ({fields.length})
-                  </h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Configure sizes, colors, inventory stock, and availability.
-                  </p>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    append({
-                      configName: 'Standard',
-                      colorName: draft.analysis?.color || 'Custom',
-                      colorHex: '',
-                      sku: `LX-${Date.now().toString().slice(-6)}`,
-                      price: watchedPrice || 0,
-                      compareAtPrice: null,
-                      stock: 0,
-                      dimensions: '',
-                      material: draft.analysis?.material || '',
-                      images: [],
-                      needsPhoto: true,
-                      suggested: false,
-                      isActive: false,
-                    })
-                  }
-                  className="rounded-xl gap-1.5 text-xs"
-                >
-                  <Plus size={14} />
-                  Add Variant
-                </Button>
-              </div>
-
-              {errors.variants && (
-                <p className="text-xs text-destructive">{errors.variants.message}</p>
               )}
-
-              <div className="space-y-4">
-                {fields.map((field, index) => {
-                  const variant = watchedVariants[index];
-                  const hasPhoto = variant?.images && variant.images.length > 0;
-                  const needsPhoto = variant?.needsPhoto;
-                  const isSuggested = variant?.suggested;
-
-                  return (
-                    <div
-                      key={field.id}
-                      className={`p-4 rounded-2xl border transition-colors ${
-                        variant?.isActive
-                          ? 'border-border bg-card'
-                          : 'border-border/60 bg-muted/20 opacity-90'
-                      }`}
-                    >
-                      {/* Variant Card Header */}
-                      <div className="flex items-center justify-between pb-3 border-b border-border/60 mb-3">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-xs text-foreground">
-                            Variant #{index + 1}:
-                          </span>
-
-                          {/* Suggested Badge */}
-                          {isSuggested && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-accent/15 text-accent border border-accent/20 px-2 py-0.5 rounded-full">
-                              <Sparkles size={10} />
-                              AI-suggested, verify
-                            </span>
-                          )}
-
-                          {/* Needs Photo Badge */}
-                          {needsPhoto && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-full">
-                              <AlertTriangle size={10} />
-                              Needs Photo
-                            </span>
-                          )}
-
-                          {hasPhoto && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                              <ImageIcon size={10} />
-                              {variant.images.length} photo(s)
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          {/* Active Toggle */}
-                          <label className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-foreground select-none">
-                            <input
-                              type="checkbox"
-                              {...register(`variants.${index}.isActive`)}
-                              className="h-4 w-4 rounded accent-primary cursor-pointer"
-                            />
-                            <span>Active</span>
-                          </label>
-
-                          {/* Remove */}
-                          {fields.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => remove(index)}
-                              className="text-muted-foreground hover:text-destructive p-1 rounded-md transition-colors"
-                              title="Delete variant"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Variant Inputs Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                        {/* Config Name */}
-                        <div>
-                          <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-                            Configuration / Size <span className="text-destructive">*</span>
-                          </label>
-                          <Input
-                            {...register(`variants.${index}.configName`)}
-                            placeholder="e.g. 3-Seater"
-                            className="h-9 text-xs rounded-xl"
-                          />
-                        </div>
-
-                        {/* Color Name */}
-                        <div>
-                          <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-                            Color <span className="text-destructive">*</span>
-                          </label>
-                          <Input
-                            {...register(`variants.${index}.colorName`)}
-                            placeholder="e.g. Charcoal Grey"
-                            className="h-9 text-xs rounded-xl"
-                          />
-                        </div>
-
-                        {/* SKU */}
-                        <div>
-                          <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-                            SKU <span className="text-destructive">*</span>
-                          </label>
-                          <Input
-                            {...register(`variants.${index}.sku`)}
-                            placeholder="SKU"
-                            className="h-9 text-xs rounded-xl font-mono"
-                          />
-                        </div>
-
-                        {/* Price */}
-                        <div>
-                          <label className="block text-[11px] font-semibold text-foreground mb-1">
-                            Price (Rs.) <span className="text-destructive">*</span>
-                          </label>
-                          <Input
-                            type="number"
-                            {...register(`variants.${index}.price`)}
-                            className="h-9 text-xs rounded-xl font-semibold"
-                          />
-                        </div>
-
-                        {/* Compare At Price */}
-                        <div>
-                          <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-                            Compare At Price
-                          </label>
-                          <Input
-                            type="number"
-                            {...register(`variants.${index}.compareAtPrice`)}
-                            placeholder="Optional"
-                            className="h-9 text-xs rounded-xl"
-                          />
-                        </div>
-
-                        {/* Stock */}
-                        <div>
-                          <label className="block text-[11px] font-semibold text-foreground mb-1">
-                            Stock Quantity <span className="text-destructive">*</span>
-                          </label>
-                          <Input
-                            type="number"
-                            min="0"
-                            {...register(`variants.${index}.stock`)}
-                            className={`h-9 text-xs rounded-xl ${
-                              variant?.isActive && (!variant?.stock || variant.stock === 0)
-                                ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/20'
-                                : ''
-                            }`}
-                          />
-                          {variant?.isActive && (!variant?.stock || variant.stock === 0) && (
-                            <p className="text-[10px] text-amber-700 dark:text-amber-400 mt-0.5">
-                              Stock 0 blocks publishing
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Dimensions */}
-                        <div>
-                          <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-                            Dimensions
-                          </label>
-                          <Input
-                            {...register(`variants.${index}.dimensions`)}
-                            placeholder="e.g. 210 x 95 x 85 cm"
-                            className="h-9 text-xs rounded-xl"
-                          />
-                        </div>
-
-                        {/* Material */}
-                        <div>
-                          <label className="block text-[11px] font-medium text-muted-foreground mb-1">
-                            Material
-                          </label>
-                          <Input
-                            {...register(`variants.${index}.material`)}
-                            placeholder="e.g. Luxury Velvet"
-                            className="h-9 text-xs rounded-xl"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Bottom Action Bar (Fixed or Sticky) */}
-            <div className="sticky bottom-4 z-20 bg-card/95 backdrop-blur-md border border-border p-4 rounded-2xl shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-xs">
-                {isDirty ? (
-                  <span className="text-amber-600 font-semibold flex items-center gap-1.5">
-                    <AlertCircle size={14} />
-                    Unsaved changes
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground flex items-center gap-1.5">
-                    <Check size={14} className="text-emerald-600" />
-                    All changes saved
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap justify-end">
-                {/* Save Button */}
-                <Button
-                  type="submit"
-                  disabled={isSaving || isQueuedOrAnalyzing}
-                  className="rounded-xl gap-2 bg-primary text-primary-foreground hover:opacity-90"
-                >
-                  {isSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
-                  <span>Save Changes</span>
-                </Button>
-
-                {/* Approve Button */}
-                {!isApproved && !isPublished && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleApprove}
-                    disabled={isApproving || isDirty || !isValid || isQueuedOrAnalyzing}
-                    className="rounded-xl gap-1.5 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
-                    title={
-                      isDirty
-                        ? 'Save changes before approving'
-                        : 'Approve draft for live store publication'
-                    }
-                  >
-                    {isApproving ? (
-                      <Loader2 size={15} className="animate-spin" />
-                    ) : (
-                      <CheckCircle2 size={15} />
-                    )}
-                    <span>Approve Draft</span>
-                  </Button>
-                )}
-
-                {/* Publish Button (Only visible when status === 'approved') */}
-                {isApproved && (
-                  <Button
-                    type="button"
-                    onClick={handleOpenPublishDialog}
-                    disabled={isPublishing}
-                    className="rounded-xl gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-xs"
-                  >
-                    <Globe size={15} />
-                    <span>Publish to Live Store</span>
-                  </Button>
-                )}
-
-                {/* Generate Images Button (Disabled placeholder for Phase d) */}
-                <div className="relative group inline-block">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled
-                    className="rounded-xl gap-1.5 text-xs opacity-60 cursor-not-allowed"
-                  >
-                    <Sparkles size={14} />
-                    <span>Generate AI Images</span>
-                  </Button>
-                  <div className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 hidden group-hover:block bg-black text-white text-[10px] font-medium px-2 py-1 rounded shadow-md whitespace-nowrap z-30">
-                    Coming soon in Phase (d)
-                  </div>
-                </div>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      {/* Confirmation Modal Dialog for Publishing */}
-      <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-foreground font-serif text-lg">
-              <Globe size={20} className="text-emerald-600" />
-              Publish Product to Live Store?
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground pt-1.5">
-              This will create a permanent live Product entry on Luxa Furniture with your approved
-              title, pricing, description, and variants. It will also trigger instant ISR
-              revalidation on the customer storefront.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="p-3 bg-muted/40 rounded-xl space-y-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Product Title:</span>
-              <span className="font-semibold text-foreground truncate max-w-xs">{watchedTitle}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Active Variants:</span>
-              <span className="font-semibold text-foreground">
-                {watchedVariants.filter((v) => v.isActive).length} variant(s)
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Base Selling Price:</span>
-              <span className="font-semibold text-emerald-600">
-                Rs. {Number(watchedPrice).toLocaleString()}
-              </span>
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setPublishDialogOpen(false)}
-              className="rounded-xl"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleConfirmPublish}
-              disabled={isPublishing}
-              className="rounded-xl gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-            >
-              {isPublishing ? (
-                <>
-                  <Loader2 size={15} className="animate-spin" />
-                  <span>Publishing...</span>
-                </>
-              ) : (
-                <>
-                  <Check size={15} />
-                  <span>Confirm & Publish</span>
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          {/* Pricing Card */}
+          <div className="bg-card rounded-3xl border border-border p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-foreground">Pricing & Margin (UK Market - GBP £)</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Selling Price (£ Inc. VAT)</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-sm font-bold text-muted-foreground">
+                    £
+                  </span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    {...register('calculatedPrice')}
+                    className="pl-8 rounded-xl h-11"
+                    disabled={isPublished}
+                  />
+                </div>
+                {errors.calculatedPrice && (
+                  <p className="text-xs text-destructive">{errors.calculatedPrice.message}</p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Compare-at Price (£ Inc. VAT)</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-sm font-bold text-muted-foreground">
+                    £
+                  </span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Optional crossed-out price"
+                    {...register('compareAtPrice')}
+                    className="pl-8 rounded-xl h-11"
+                    disabled={isPublished}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {draft.pricing?.suggestedPriceRange && (
+              <div className="bg-muted/40 rounded-xl p-3 text-xs text-muted-foreground flex items-center justify-between">
+                <span>AI Suggested Price Range (UK Retail Benchmark):</span>
+                <span className="font-semibold text-foreground">
+                  £{draft.pricing.suggestedPriceRange.min.toLocaleString('en-GB')} — £{draft.pricing.suggestedPriceRange.max.toLocaleString('en-GB')}
+                </span>
+              </div>
+            )}
+
+            {draft.pricing && (
+              <p className="text-xs text-muted-foreground">
+                Base Cost: £{draft.pricing.costPrice.toLocaleString('en-GB')} · UK VAT: {Math.round((draft.pricing.vatRate ?? 0.20) * 100)}% · Estimated Margin:{' '}
+                {Math.round((draft.pricing.marginRate || 0) * 100)}%
+              </p>
+            )}
+          </div>
+
+          {/* UK Compliance & Warehouse Stock Card */}
+          <div className="bg-card rounded-3xl border border-border p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <ShieldCheck size={16} className="text-accent" />
+              UK Compliance & Stock Details
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Stock Location */}
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">
+                  Stock Location (UK)
+                </label>
+                <Input
+                  {...register('stockLocation')}
+                  placeholder="e.g. UK warehouse"
+                  className="rounded-xl h-11"
+                  disabled={isPublished}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Local UK inventory. Never mention lead times or free delivery unless specified in input.
+                </p>
+              </div>
+
+              {/* Fire Safety Label Confirmation */}
+              <div className="space-y-1.5 flex flex-col justify-center">
+                <div className="rounded-2xl border border-border bg-muted/20 p-3.5 flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="fireSafetyLabelConfirmed"
+                    {...register('fireSafetyLabelConfirmed')}
+                    disabled={isPublished}
+                    className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                  />
+                  <label htmlFor="fireSafetyLabelConfirmed" className="text-xs cursor-pointer text-foreground">
+                    <span className="font-semibold block">
+                      UK Fire Safety Label Confirmed
+                    </span>
+                    <span className="text-muted-foreground block mt-0.5">
+                      Required for upholstered furniture under Furniture & Furnishings (Fire) (Safety) Regulations 1988 before publishing.
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Form Save Button */}
+          {!isPublished && isDirty && (
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                disabled={isSaving}
+                className="rounded-xl gap-2 bg-primary text-primary-foreground hover:opacity-90"
+              >
+                {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                Save Changes
+              </Button>
+            </div>
+          )}
+        </form>
+      )}
+
+      {/* Variants Table */}
+      {draft.variants && draft.variants.length > 0 && !isProcessing && (
+        <div className="bg-card rounded-3xl border border-border overflow-hidden">
+          <div className="p-5 border-b border-border flex items-center gap-2">
+            <Package size={14} className="text-accent" />
+            <h2 className="text-sm font-semibold text-foreground">
+              Generated Variants
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                ({draft.variants.length})
+              </span>
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/60 bg-muted/30">
+                  {['Configuration', 'Colour', 'SKU', 'Selling Price (£)', 'Compare At (£)', 'Stock', 'Status'].map(
+                    (h) => (
+                      <th
+                        key={h}
+                        className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap"
+                      >
+                        {h}
+                      </th>
+                    ),
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {draft.variants.map((v, idx) => (
+                  <tr key={v._id || idx} className="hover:bg-muted/20 transition-colors">
+                    <td className="py-3 px-4 font-medium text-foreground whitespace-nowrap">
+                      {v.configName}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        {v.colorHex && (
+                          <span
+                            className="w-4 h-4 rounded-full border border-border shrink-0"
+                            style={{ backgroundColor: v.colorHex }}
+                          />
+                        )}
+                        <span className="text-muted-foreground text-xs">{v.colorName}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 font-mono text-xs text-muted-foreground">{v.sku}</td>
+                    <td className="py-3 px-4 font-semibold text-foreground">
+                      £{v.price.toLocaleString('en-GB')}
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground text-xs">
+                      {v.compareAtPrice ? `£${v.compareAtPrice.toLocaleString('en-GB')}` : '—'}
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground">{v.stock}</td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-semibold ${
+                          v.isActive
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400'
+                            : 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {v.isActive ? 'Active' : 'Draft'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Sticky Bottom Bar */}
+      {!isProcessing && !isFailed && !isPublished && (
+        <div className="fixed bottom-0 left-0 right-0 lg:left-64 z-20 bg-card/95 backdrop-blur border-t border-border px-4 py-3 flex items-center justify-between gap-3 shadow-lg">
+          <div className="text-xs text-muted-foreground hidden sm:block">
+            {canApprove && 'Review and edit the generated fields, then click Approve Draft.'}
+            {canPublish && 'Draft is approved! Publish directly to the Luxa Furniture storefront.'}
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            {isDirty && (
+              <Button
+                onClick={handleSubmit(onSave)}
+                disabled={isSaving}
+                variant="outline"
+                className="rounded-xl gap-2"
+              >
+                {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                Save
+              </Button>
+            )}
+            {canApprove && (
+              <Button
+                onClick={handleApprove}
+                disabled={isApproving || isDirty}
+                className="rounded-xl gap-2 bg-primary text-primary-foreground hover:opacity-90"
+              >
+                {isApproving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                Approve Draft
+              </Button>
+            )}
+            {canPublish && (
+              <Button
+                onClick={handlePublish}
+                disabled={isPublishing}
+                className="rounded-xl gap-2 bg-emerald-600 text-white hover:bg-emerald-700"
+              >
+                {isPublishing ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                Publish Product
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

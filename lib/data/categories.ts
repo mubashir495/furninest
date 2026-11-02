@@ -26,7 +26,7 @@ export const getCategoryBySlug = cache(async (slug: string): Promise<Category | 
     const json = await res.json();
     return json.data ?? null;
   } catch {
-    return [];
+    return null;
   }
 });
 

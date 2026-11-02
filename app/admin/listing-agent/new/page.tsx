@@ -10,9 +10,9 @@ import {
   Sparkles,
   ArrowLeft,
   Loader2,
-  DollarSign,
   AlertCircle,
-  Image as ImageIcon,
+  FileText,
+  ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,9 @@ export default function NewListingDraftPage() {
 
   const [files, setFiles] = useState<UploadFileItem[]>([]);
   const [costPrice, setCostPrice] = useState<string>('');
+  const [stockLocation, setStockLocation] = useState<string>('UK warehouse');
+  const [rawDetails, setRawDetails] = useState<string>('');
+  const [fireSafetyConfirmed, setFireSafetyConfirmed] = useState<boolean>(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -102,32 +105,50 @@ export default function NewListingDraftPage() {
     e.preventDefault();
     setErrorMessage(null);
 
-    const costNum = Number(costPrice);
-    if (!costPrice || isNaN(costNum) || costNum <= 0) {
-      setErrorMessage('Please enter a valid cost price greater than 0.');
-      toast.error('Invalid cost price.');
+    const hasPhotos = files.length > 0;
+    const hasText = rawDetails.trim().length > 0;
+
+    if (!hasPhotos && !hasText) {
+      const msg = 'Please provide either product photos or raw description notes (or both).';
+      setErrorMessage(msg);
+      toast.error(msg);
       return;
     }
 
-    if (files.length === 0) {
-      setErrorMessage('Please upload at least 1 product image (max 6).');
-      toast.error('At least 1 product image is required.');
+    const costNum = costPrice ? Number(costPrice) : 0;
+    if (costPrice && (isNaN(costNum) || costNum < 0)) {
+      setErrorMessage('Please enter a valid cost price in GBP (£).');
+      toast.error('Invalid cost price.');
       return;
     }
 
     setIsSubmitting(true);
     const formData = new FormData();
-    formData.append('costPrice', costNum.toString());
+    if (costNum > 0) {
+      formData.append('costPrice', costNum.toString());
+    }
+    formData.append('language', 'en'); // Output is always British English
+    if (stockLocation.trim()) {
+      formData.append('stockLocation', stockLocation.trim());
+    }
+    if (hasText) {
+      formData.append('rawDetails', rawDetails.trim());
+    }
+    formData.append('fireSafetyLabelConfirmed', fireSafetyConfirmed ? 'true' : 'false');
 
     files.forEach((item) => {
       formData.append('images', item.file);
     });
 
     try {
-      toast.loading('Uploading photos and queueing AI analysis...', { id: 'create-draft' });
+      toast.loading('Analysing input with Claude AI & generating UK listing draft...', {
+        id: 'create-draft',
+      });
       const response = await listingAgentService.createDraft(formData);
 
-      toast.success('Draft created! Starting AI visual analysis...', { id: 'create-draft' });
+      toast.success('Draft created! Processing UK catalogue listing...', {
+        id: 'create-draft',
+      });
       router.push(`/admin/listing-agent/${response.draftId}`);
     } catch (err: any) {
       const msg = err?.message || 'Failed to create listing draft.';
@@ -150,7 +171,7 @@ export default function NewListingDraftPage() {
         </Link>
         <span className="text-xs bg-accent/15 text-accent font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
           <Sparkles size={13} />
-          AI Step 1 of 3
+          UK AI Listing Generator (Claude Sonnet)
         </span>
       </div>
 
@@ -158,11 +179,11 @@ export default function NewListingDraftPage() {
       <div className="bg-card rounded-3xl border border-border p-6 sm:p-8 shadow-xs">
         <div className="mb-6">
           <h1 className="text-2xl font-serif font-bold text-foreground">
-            Create AI Listing Draft
+            Create AI Listing Draft (UK Market)
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Upload 1 to 6 photos of your furniture piece. Gemini Vision will analyze the style,
-            materials, color, and seating, automatically generating a draft catalog listing.
+            Provide product photos and/or raw notes (in English, Urdu, or Roman Urdu).
+            Claude AI will generate a ready-to-publish British English listing with VAT-inclusive pricing in GBP (£).
           </p>
         </div>
 
@@ -174,11 +195,14 @@ export default function NewListingDraftPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Drag & Drop Zone */}
+          {/* Drag & Drop Photos Zone */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Product Photos ({files.length} of {MAX_IMAGES})
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-foreground">
+                Product Photos ({files.length} of {MAX_IMAGES})
+              </label>
+              <span className="text-xs text-muted-foreground">Optional if raw notes provided</span>
+            </div>
 
             <div
               onDragOver={handleDragOver}
@@ -187,8 +211,8 @@ export default function NewListingDraftPage() {
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-3xl p-8 text-center cursor-pointer transition-all ${
                 isDragging
-                  ? 'border-accent bg-accent/10 scale-[0.99]'
-                  : 'border-border hover:border-accent/60 hover:bg-muted/40 bg-muted/20'
+                  ? 'border-accent bg-accent/5'
+                  : 'border-border hover:border-accent/50 hover:bg-muted/30'
               }`}
             >
               <input
@@ -199,7 +223,7 @@ export default function NewListingDraftPage() {
                 className="hidden"
                 onChange={(e) => {
                   if (e.target.files) handleFilesAdded(e.target.files);
-                  e.target.value = ''; // reset so same file can be re-added if desired
+                  e.target.value = '';
                 }}
               />
 
@@ -231,14 +255,12 @@ export default function NewListingDraftPage() {
                       className="object-cover"
                     />
 
-                    {/* Primary Badge */}
                     {index === 0 && (
                       <span className="absolute top-1.5 left-1.5 bg-black/70 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md backdrop-blur-xs">
                         Main
                       </span>
                     )}
 
-                    {/* Remove Button */}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -260,30 +282,105 @@ export default function NewListingDraftPage() {
             )}
           </div>
 
-          {/* Cost Price Input */}
-          <div className="max-w-xs">
-            <label className="block text-sm font-medium text-foreground mb-1.5">
-              Cost Price (Rs. PKR) <span className="text-destructive">*</span>
-            </label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-xs font-bold text-muted-foreground">
-                PKR
-              </span>
-              <Input
-                type="number"
-                min="1"
-                step="1"
-                placeholder="e.g. 45000"
-                value={costPrice}
-                onChange={(e) => setCostPrice(e.target.value)}
-                className="pl-13 rounded-xl h-11"
-                required
-              />
+          {/* Raw Text Details (Accepts Urdu, Roman Urdu, or English) */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-foreground flex items-center gap-1.5">
+                <FileText size={14} className="text-accent" />
+                Raw Details / Seller Notes (English, Urdu, or Roman Urdu)
+              </label>
+              <span className="text-xs text-muted-foreground">Optional</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-1.5">
-              The AI pricing engine calculates your selling price ending in 999 based on furniture
-              category margins.
+            <textarea
+              rows={3}
+              placeholder="e.g. 3 seater velvet sofa in charcoal grey, oak legs. bohot achi condition me hai, perfect for modern living room. W 215cm x D 90cm..."
+              value={rawDetails}
+              onChange={(e) => setRawDetails(e.target.value)}
+              className="w-full rounded-2xl border border-input bg-background px-3.5 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y leading-relaxed"
+            />
+            <p className="text-xs text-muted-foreground">
+              You can write details in English, Urdu, or Roman Urdu. Claude translates and structures all content into British English.
             </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Cost Price Input in GBP */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Cost price (£)
+                <span className="text-xs text-muted-foreground ml-1.5">(Optional)</span>
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center text-sm font-bold text-muted-foreground">
+                  £
+                </span>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="e.g. 250"
+                  value={costPrice}
+                  onChange={(e) => setCostPrice(e.target.value)}
+                  className="pl-8 rounded-xl h-11"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Calculated with category margin + 20% UK VAT.
+              </p>
+            </div>
+
+            {/* Stock Location */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Stock Location (UK)
+              </label>
+              <Input
+                type="text"
+                placeholder="e.g. UK warehouse"
+                value={stockLocation}
+                onChange={(e) => setStockLocation(e.target.value)}
+                className="rounded-xl h-11"
+              />
+              <p className="text-xs text-muted-foreground">
+                Stock is held in the UK. Mentioned in copy only if specified in notes.
+              </p>
+            </div>
+
+            {/* Market Info */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Target Market & Language
+              </label>
+              <div className="rounded-xl border border-border bg-muted/40 p-3 text-xs text-muted-foreground flex items-center gap-2">
+                <span className="text-base">🇬🇧</span>
+                <div>
+                  <p className="font-semibold text-foreground">United Kingdom (British English)</p>
+                  <p className="text-[11px]">VAT-inclusive GBP (£) · UK furniture sizing (cm)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* UK Compliance Rail: Fire Safety Checkbox */}
+          <div className="rounded-2xl border border-border bg-muted/20 p-4 space-y-2">
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="fireSafetyCheck"
+                checked={fireSafetyConfirmed}
+                onChange={(e) => setFireSafetyConfirmed(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <label htmlFor="fireSafetyCheck" className="text-xs cursor-pointer text-foreground">
+                <span className="font-semibold block flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="text-accent" />
+                  UK Fire Safety Label Confirmed (Permanent label present on item)
+                </span>
+                <span className="text-muted-foreground block mt-0.5">
+                  Check this box if the physical UK fire safety compliance label (Furniture and Furnishings (Fire) (Safety) Regulations 1988) is present on upholstered items. Required before publishing to store.
+                </span>
+              </label>
+            </div>
           </div>
 
           {/* Submit */}
@@ -296,7 +393,7 @@ export default function NewListingDraftPage() {
 
             <Button
               type="submit"
-              disabled={isSubmitting || files.length === 0 || !costPrice}
+              disabled={isSubmitting || (files.length === 0 && !rawDetails.trim())}
               className="rounded-xl gap-2 bg-primary text-primary-foreground hover:opacity-90 min-w-36"
             >
               {isSubmitting ? (

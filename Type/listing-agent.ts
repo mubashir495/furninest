@@ -8,6 +8,11 @@ export type ListingDraftStatus =
   | 'published'
   | 'failed';
 
+export interface SpecificationItem {
+  label: string;
+  value: string;
+}
+
 export interface AnalysisData {
   category: string;
   material: string;
@@ -15,6 +20,7 @@ export interface AnalysisData {
   style: string;
   seating?: number | null;
   features: string[];
+  specifications?: SpecificationItem[];
   confidence: number;
   raw?: Record<string, any>;
 }
@@ -27,11 +33,19 @@ export interface SeoData {
   tags: string[];
 }
 
+export interface SuggestedPriceRange {
+  min: number;
+  max: number;
+}
+
 export interface PricingData {
   costPrice: number;
   marginRate: number;
+  vatRate?: number;
+  currency?: string;
   calculatedPrice: number;
   compareAtPrice: number | null;
+  suggestedPriceRange?: SuggestedPriceRange | null;
 }
 
 export interface DraftVariant {
@@ -73,6 +87,10 @@ export interface ListingDraft {
   publishedProductId?: string | null;
   categoryId?: string | null;
   subCategoryId?: string | null;
+  language?: string;
+  rawDetails?: string | null;
+  fireSafetyLabelConfirmed?: boolean;
+  stockLocation?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -102,7 +120,7 @@ export interface PublishDraftResponse {
 export const draftVariantSchema = z.object({
   _id: z.string().optional(),
   configName: z.string().min(1, 'Configuration name is required'),
-  colorName: z.string().min(1, 'Color name is required'),
+  colorName: z.string().min(1, 'Colour name is required'),
   colorHex: z.string().optional().default(''),
   sku: z.string().min(1, 'SKU is required'),
   price: z.coerce.number().min(0, 'Price must be positive'),
@@ -133,6 +151,8 @@ export const listingDraftFormSchema = z.object({
   tags: z.array(z.string()).min(1, 'At least one tag is required'),
   calculatedPrice: z.coerce.number().min(0, 'Price must be positive'),
   compareAtPrice: z.coerce.number().nullable().optional(),
+  fireSafetyLabelConfirmed: z.boolean().default(false),
+  stockLocation: z.string().default('UK warehouse'),
   variants: z.array(draftVariantSchema).min(1, 'At least one variant is required'),
 });
 

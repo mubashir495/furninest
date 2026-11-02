@@ -160,8 +160,8 @@ export default function ListingAgentIndexPage() {
                   <tr>
                     <th className="py-3.5 px-4">Item</th>
                     <th className="py-3.5 px-4">Status</th>
-                    <th className="py-3.5 px-4">Selling Price</th>
-                    <th className="py-3.5 px-4">Cost Price</th>
+                    <th className="py-3.5 px-4">Selling Price (£)</th>
+                    <th className="py-3.5 px-4">Cost Price (£)</th>
                     <th className="py-3.5 px-4">Variants</th>
                     <th className="py-3.5 px-4">Created</th>
                     <th className="py-3.5 px-4 text-right">Actions</th>
@@ -182,7 +182,7 @@ export default function ListingAgentIndexPage() {
                       null;
 
                     const formattedDate = new Date(draft.createdAt).toLocaleDateString(
-                      'en-PK',
+                      'en-GB',
                       {
                         day: 'numeric',
                         month: 'short',
@@ -248,12 +248,12 @@ export default function ListingAgentIndexPage() {
 
                         {/* Selling Price */}
                         <td className="py-4 px-4 font-semibold text-foreground">
-                          {price != null ? `Rs. ${price.toLocaleString()}` : '—'}
+                          {price != null ? `£${price.toLocaleString('en-GB')}` : '—'}
                         </td>
 
                         {/* Cost Price */}
                         <td className="py-4 px-4 text-muted-foreground">
-                          Rs. {draft.costPrice.toLocaleString()}
+                          £{draft.costPrice.toLocaleString('en-GB')}
                         </td>
 
                         {/* Variants Count */}
