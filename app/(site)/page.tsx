@@ -1,14 +1,34 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
+import dynamic from 'next/dynamic';
 import { getAllProducts, getCatalogTree } from '@/lib/data/catalog';
 import { HeroCarousel } from '@/components/home/HeroCarousel';
-import { CategoryCarousel } from '@/components/home/CategoryCarousel';
 import { ThemeQuickSwitch } from '@/components/home/ThemeQuickSwitch';
-import { NewsletterForm } from '@/components/home/NewsletterForm';
 import { TrustBadges } from '@/components/comman/TrustBadges';
-import { ProductCarousel } from '@/components/products/ProductCarousel';
 
-export const revalidate = 3600; // ISR: catalog rebuilds at most every 1 hour or on-demand
+// Lazy-load below-the-fold heavy carousel sections using next/dynamic
+const CategoryCarousel = dynamic(
+  () => import('@/components/home/CategoryCarousel').then((m) => m.CategoryCarousel),
+  {
+    loading: () => <div className="h-72 rounded-3xl bg-muted/40 animate-pulse" />,
+  },
+);
+
+const ProductCarousel = dynamic(
+  () => import('@/components/products/ProductCarousel').then((m) => m.ProductCarousel),
+  {
+    loading: () => <div className="h-96 rounded-3xl bg-muted/40 animate-pulse" />,
+  },
+);
+
+const NewsletterForm = dynamic(
+  () => import('@/components/home/NewsletterForm').then((m) => m.NewsletterForm),
+  {
+    loading: () => <div className="h-64 bg-primary" />,
+  },
+);
+
+export const revalidate = 300; // ISR: 300 seconds (5 min) cache
 
 export const metadata: Metadata = {
   title: {
@@ -45,7 +65,7 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  // Runs on the server, in parallel, cached by the Next.js Data Cache.
+  // Runs on the server, in parallel, cached by the Next.js Data Cache (revalidate: 300).
   const [catalog, allProducts] = await Promise.all([getCatalogTree(), getAllProducts()]);
 
   const newArrivals = [...allProducts]
@@ -62,7 +82,7 @@ export default async function Home() {
       </section>
 
       <section className="w-full bg-primary py-8 border-y border-white/10">
-        <div className="container mx-auto px-6 text-center text-white/80 text-sm uppercase tracking-widest">
+        <div className="container mx-auto px-6 text-center text-white/90 text-sm uppercase tracking-widest font-medium">
           {allProducts.length > 0 ? `${allProducts.length}+ Products` : 'Curated Collection'}
         </div>
       </section>

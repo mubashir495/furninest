@@ -4,8 +4,6 @@ const BADGES = [
   {
     icon: Truck,
     title: 'Free Delivery',
-    // The backend applies no shipping fee on any order today, so this is
-    // accurate without a fabricated minimum order threshold.
     subtitle: 'On all orders',
   },
   {
@@ -36,7 +34,7 @@ export function TrustBadges() {
                 <badge.icon size={30} className="text-accent" strokeWidth={1.75} />
               </div>
               <div>
-                <h3 className="font-serif text-lg font-semibold text-primary mb-1">{badge.title}</h3>
+                <p className="font-serif text-lg font-semibold text-primary mb-1">{badge.title}</p>
                 <p className="text-sm text-muted-foreground">{badge.subtitle}</p>
               </div>
             </div>

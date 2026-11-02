@@ -33,10 +33,20 @@ export function ProductCarousel({ products, title, viewAllLink }: ProductCarouse
             </Link>
           )}
           <div className="flex gap-2">
-            <button ref={prevRef} className="w-10 h-10 rounded-full glass flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors">
+            <button
+              ref={prevRef}
+              type="button"
+              aria-label="Previous products"
+              className="w-10 h-10 rounded-full glass flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+            >
               <ChevronLeft size={20} />
             </button>
-            <button ref={nextRef} className="w-10 h-10 rounded-full glass flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors">
+            <button
+              ref={nextRef}
+              type="button"
+              aria-label="Next products"
+              className="w-10 h-10 rounded-full glass flex items-center justify-center text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+            >
               <ChevronRight size={20} />
             </button>
           </div>

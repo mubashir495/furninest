@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   LayoutDashboard, FileText, FilePlus, LogOut,
-  Menu, X, Sun, Moon,
+  Menu, X, Sun, Moon, Sparkles,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -13,9 +13,11 @@ import Cookies from 'js-cookie';
 
 // ── Nav items ─────────────────────────────────────────────────────────────────
 const NAV = [
-  { href: '/admin',          icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/admin/blog',     icon: FileText,        label: 'Blog Posts' },
-  { href: '/admin/blog/new', icon: FilePlus,        label: 'New Post' },
+  { href: '/admin',                  icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/admin/listing-agent',     icon: Sparkles,        label: 'AI Listing Agent' },
+  { href: '/admin/listing-agent/new', icon: FilePlus,        label: 'New AI Listing' },
+  { href: '/admin/blog',             icon: FileText,        label: 'Blog Posts' },
+  { href: '/admin/blog/new',         icon: FilePlus,        label: 'New Post' },
 ];
 
 // ── Sidebar content ───────────────────────────────────────────────────────────

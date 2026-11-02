@@ -43,7 +43,13 @@ export function HeroCarousel() {
       effect="fade"
       speed={1500}
       autoplay={{ delay: 6000, disableOnInteraction: false }}
-      pagination={{ clickable: true, bulletClass: 'swiper-bullet-custom', bulletActiveClass: 'swiper-bullet-custom-active' }}
+      pagination={{
+        clickable: true,
+        bulletClass: 'swiper-bullet-custom',
+        bulletActiveClass: 'swiper-bullet-custom-active',
+        renderBullet: (index, className) =>
+          `<button type="button" class="${className}" aria-label="Go to hero slide ${index + 1}"></button>`,
+      }}
       className="w-full h-screen"
     >
       {heroSlides.map((slide, index) => (
@@ -56,6 +62,7 @@ export function HeroCarousel() {
             sizes="100vw"
             priority={index === 0}
             fetchPriority={index === 0 ? 'high' : 'auto'}
+            loading={index === 0 ? 'eager' : 'lazy'}
             className="object-cover"
           />
           <div className="absolute inset-0 z-20 flex items-center justify-center md:justify-start px-6 md:px-24">
@@ -68,19 +75,32 @@ export function HeroCarousel() {
               >
                 {slide.eyebrow}
               </motion.p>
-              <motion.h1
-                initial={{ y: 30, opacity: 0 }}
-                whileInView={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-                className="text-5xl md:text-7xl lg:text-8xl font-bold font-serif text-white mb-6 leading-[1.1]"
-              >
-                {slide.title}
-              </motion.h1>
+              {index === 0 ? (
+                <motion.h1
+                  initial={{ y: 30, opacity: 0 }}
+                  whileInView={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.8, delay: 0.2 }}
+                  className="text-5xl md:text-7xl lg:text-8xl font-bold font-serif text-white mb-6 leading-[1.1]"
+                >
+                  {slide.title}
+                </motion.h1>
+              ) : (
+                <motion.p
+                  role="heading"
+                  aria-level={2}
+                  initial={{ y: 30, opacity: 0 }}
+                  whileInView={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.8, delay: 0.2 }}
+                  className="text-5xl md:text-7xl lg:text-8xl font-bold font-serif text-white mb-6 leading-[1.1]"
+                >
+                  {slide.title}
+                </motion.p>
+              )}
               <motion.p
                 initial={{ y: 20, opacity: 0 }}
                 whileInView={{ y: 0, opacity: 1 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
-                className="text-lg md:text-2xl text-white/80 mb-10 font-light max-w-lg mx-auto md:mx-0"
+                className="text-lg md:text-2xl text-white/90 mb-10 font-light max-w-lg mx-auto md:mx-0"
               >
                 {slide.subtitle}
               </motion.p>

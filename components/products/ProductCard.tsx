@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Heart, ShoppingCart } from 'lucide-react';
 import {
   Product,
@@ -94,29 +95,33 @@ export function ProductCard({ product }: { product: Product }) {
         {/* Framed image with padding, like a matted photo */}
         <Link href={`/product/${product.slug}`} className="block relative p-3 pb-0">
           <div className="relative overflow-hidden rounded-2xl aspect-[4/3] bg-muted">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={image}
-              alt={product.name}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+            <Image
+              src={image || '/window.svg'}
+              alt=""
+              fill
+              sizes="(max-width: 640px) 85vw, (max-width: 1024px) 33vw, 25vw"
+              className="object-cover transition-transform duration-500 md:group-hover:scale-105"
               loading="lazy"
             />
 
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-3">
               <div className="flex justify-end">
                 <button
+                  type="button"
                   onClick={handleToggleWishlist}
                   className="w-9 h-9 bg-white/20 backdrop-blur-md flex items-center justify-center rounded-full hover:bg-white transition-colors"
-                  aria-label="Toggle wishlist"
+                  aria-label={isWishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
                 >
                   <Heart size={16} className={isWishlisted ? 'fill-accent text-accent' : 'text-white group-hover:text-primary'} />
                 </button>
               </div>
               <button
+                type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   setIsQuickViewOpen(true);
                 }}
+                aria-label={`Quick view ${product.name}`}
                 className="w-full bg-white/20 backdrop-blur-md text-white font-medium py-2.5 rounded-xl hover:bg-white hover:text-primary transition-colors text-xs uppercase tracking-wider"
               >
                 Quick View
@@ -180,8 +185,10 @@ export function ProductCard({ product }: { product: Product }) {
             </div>
 
             <button
+              type="button"
               onClick={handleAddToCart}
               disabled={!inStock || isAdding}
+              aria-label={!inStock ? `${product.name} is sold out` : variantMode ? `Select options for ${product.name}` : `Add ${product.name} to cart`}
               className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-full font-medium text-sm hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50 shrink-0"
             >
               <ShoppingCart size={15} />

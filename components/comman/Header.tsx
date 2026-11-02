@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { ShoppingBag, Heart, Search, Menu, X, User, Sun, Moon, ChevronDown, Palette } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
@@ -103,7 +104,7 @@ export function Header() {
         ─────────────────────────────────────────────────────────────────────────
       */}
       <header
-        className={`fixed left-4 right-4 z-40 transition-all duration-300 rounded-2xl border ${
+        className={`fixed left-4 right-4 z-40 transition-[background-color,border-color,box-shadow] duration-300 rounded-2xl border ${
           isScrolled || isMobileMenuOpen || isSearchOpen
             ? 'glass dark:glass-dark border-white/20 shadow-lg'
             : 'glass dark:glass-dark border-transparent soft-shadow'
@@ -115,6 +116,8 @@ export function Header() {
           <div className="flex items-center justify-between">
             {/* Hamburger (mobile) */}
             <button
+              type="button"
+              aria-label={isMobileMenuOpen ? 'Close menu' : 'Open menu'}
               className="md:hidden p-2 -ml-2 text-primary"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
@@ -122,7 +125,7 @@ export function Header() {
             </button>
 
             {/* Logo */}
-            <Link href="/" className="flex-shrink-0">
+            <Link href="/" className="flex-shrink-0" aria-label="Luxa Furniture Home">
               <span className="font-serif text-lg sm:text-2xl md:text-3xl font-bold tracking-widest uppercase text-primary">
                 LUXA FURNITURE
               </span>
@@ -163,14 +166,13 @@ export function Header() {
                               href={cat.slug ? `/category/${cat.slug}` : '/shop'}
                               className="group/cat block relative aspect-square rounded-2xl overflow-hidden"
                             >
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
+                              <Image
                                 src={cat.image || '/window.svg'}
-                                alt={cat.name}
-                                className="w-full h-full object-cover transition-transform duration-500 group-hover/cat:scale-110"
-                                onError={(e) => {
-                                  (e.currentTarget as HTMLImageElement).src = '/window.svg';
-                                }}
+                                alt=""
+                                fill
+                                sizes="160px"
+                                loading="lazy"
+                                className="object-cover transition-transform duration-500 md:group-hover/cat:scale-105"
                               />
                               <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
                                 <span className="text-white font-serif font-medium">{cat.name}</span>
@@ -189,6 +191,8 @@ export function Header() {
             <div className="flex items-center gap-2 md:gap-4 text-primary" suppressHydrationWarning>
               {/* Search */}
               <button
+                type="button"
+                aria-label={isSearchOpen ? 'Close search' : 'Open search'}
                 onClick={() => setIsSearchOpen(!isSearchOpen)}
                 className="p-2 hover:bg-muted rounded-full transition-colors"
               >
@@ -198,6 +202,8 @@ export function Header() {
               {/* Theme switcher — desktop only */}
               <div className="relative hidden md:block" ref={dropdownRef}>
                 <button
+                  type="button"
+                  aria-label="Select theme"
                   onClick={() => setIsThemeDropdownOpen(!isThemeDropdownOpen)}
                   className="p-2 hover:bg-muted rounded-full transition-colors flex items-center gap-1"
                 >
@@ -210,6 +216,8 @@ export function Header() {
                       {themeOptions.map((opt) => (
                         <button
                           key={opt.value}
+                          type="button"
+                          aria-label={`Select ${opt.label} theme`}
                           onClick={() => {
                             setMode(opt.value);
                             setIsThemeDropdownOpen(false);
@@ -232,6 +240,7 @@ export function Header() {
                             type="color"
                             value={customTheme.primary}
                             onChange={(e) => setCustomTheme({ ...customTheme, primary: e.target.value })}
+                            aria-label="Custom primary color"
                             className="w-full h-8 p-0 border-0 rounded cursor-pointer"
                           />
                         </div>
@@ -244,13 +253,18 @@ export function Header() {
               {/* User / account */}
               <Link
                 href={isAuthenticated ? '/account' : '/auth/login'}
+                aria-label={isAuthenticated ? 'My Account' : 'Sign In'}
                 className="hidden md:block p-2 hover:bg-muted rounded-full transition-colors"
               >
                 <User size={20} />
               </Link>
 
               {/* Wishlist */}
-              <Link href="/wishlist" className="relative p-2 hover:bg-muted rounded-full transition-colors">
+              <Link
+                href="/wishlist"
+                aria-label={`Wishlist (${mounted ? wishlistItems.length : 0} items)`}
+                className="relative p-2 hover:bg-muted rounded-full transition-colors"
+              >
                 <Heart size={20} />
                 {mounted && wishlistItems.length > 0 && (
                   <span className="absolute top-0 right-0 bg-accent text-accent-foreground text-[10px] font-medium w-4 h-4 rounded-full flex items-center justify-center">
@@ -260,7 +274,11 @@ export function Header() {
               </Link>
 
               {/* Cart */}
-              <Link href="/cart" className="relative p-2 hover:bg-muted rounded-full transition-colors">
+              <Link
+                href="/cart"
+                aria-label={`Shopping Cart (${mounted ? itemCount : 0} items)`}
+                className="relative p-2 hover:bg-muted rounded-full transition-colors"
+              >
                 <ShoppingBag size={20} />
                 {mounted && itemCount > 0 && (
                   <span className="absolute top-0 right-0 bg-accent text-accent-foreground text-[10px] font-medium w-4 h-4 rounded-full flex items-center justify-center">
@@ -293,6 +311,7 @@ export function Header() {
                   />
                   <button
                     type="submit"
+                    aria-label="Submit search"
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-primary hover:text-accent transition-colors"
                   >
                     <Search size={20} />

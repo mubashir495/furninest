@@ -5,7 +5,7 @@ import { ProductDetail } from '@/Type/product';
 
 export const getProductBySlug = cache(async (slug: string): Promise<ProductDetail | null> => {
   const res = await fetch(`${API_URL}/products/slug/${slug}`, {
-    next: { revalidate: 3600, tags: ['products', `product:${slug}`] },
+    next: { revalidate: 300, tags: ['products', `product:${slug}`] },
   });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error('Could not load product.');
@@ -16,7 +16,7 @@ export const getProductBySlug = cache(async (slug: string): Promise<ProductDetai
 export async function getAllProductSlugs({ limit = 100 }: { limit?: number } = {}): Promise<string[]> {
   try {
     const res = await fetch(`${API_URL}/products?limit=${limit}`, {
-      next: { revalidate: 3600, tags: ['products'] },
+      next: { revalidate: 300, tags: ['products'] },
     });
     if (!res.ok) return [];
     const json = await res.json();

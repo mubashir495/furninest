@@ -20,11 +20,14 @@ export function ThemeQuickSwitch() {
           {themeOptions.map((opt) => (
             <button
               key={opt.value}
+              type="button"
               onClick={() => setMode(opt.value)}
               aria-label={`Switch to ${opt.label} theme`}
               aria-pressed={mode === opt.value}
-              className={`p-2 rounded-xl transition-all text-sm flex items-center gap-2 ${
-                mode === opt.value ? 'bg-accent text-accent-foreground shadow-md' : 'hover:bg-white/20 dark:hover:bg-white/10 text-white/80 hover:text-white'
+              className={`p-2 rounded-xl transition-colors text-sm flex items-center gap-2 ${
+                mode === opt.value
+                  ? 'bg-accent text-accent-foreground shadow-md'
+                  : 'hover:bg-white/20 dark:hover:bg-white/10 text-white/90 hover:text-white'
               }`}
               title={opt.label}
             >
@@ -34,12 +37,13 @@ export function ThemeQuickSwitch() {
           ))}
           {mode === 'custom' && (
             <div className="border-t border-white/20 pt-2 mt-1">
-              <label className="flex items-center gap-2 text-xs text-white/70 cursor-pointer">
+              <label className="flex items-center gap-2 text-xs text-white/90 cursor-pointer">
                 <Palette size={14} />
                 <input
                   type="color"
                   value={customTheme.primary}
                   onChange={(e) => setCustomTheme({ ...customTheme, primary: e.target.value })}
+                  aria-label="Custom primary color picker"
                   className="w-6 h-6 p-0 border-0 rounded cursor-pointer bg-transparent"
                 />
               </label>
