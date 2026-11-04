@@ -151,7 +151,12 @@ export const listingDraftFormSchema = z.object({
   tags: z.array(z.string()).min(1, 'At least one tag is required'),
   calculatedPrice: z.coerce.number().min(0, 'Price must be positive'),
   compareAtPrice: z.coerce.number().nullable().optional(),
-  fireSafetyLabelConfirmed: z.boolean().default(false),
+  fireSafetyLabelConfirmed: z
+    .preprocess(
+      (val) => (typeof val === 'string' ? val === 'true' : Boolean(val)),
+      z.boolean(),
+    )
+    .default(false),
   stockLocation: z.string().default('UK warehouse'),
   variants: z.array(draftVariantSchema).min(1, 'At least one variant is required'),
 });

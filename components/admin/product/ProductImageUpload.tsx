@@ -9,7 +9,7 @@ interface ProductImageUploadProps {
   existingImages?: string[];
   onRemoveExisting?: (index: number) => void;
   maxImages?: number;
-}
+} 
 
 export default function ProductImageUpload({
   onImagesChange,
