@@ -141,7 +141,7 @@ export default function NewListingDraftPage() {
     });
 
     try {
-      toast.loading('Analysing input with Claude AI & generating UK listing draft...', {
+      toast.loading('Analysing input with Gemini AI & generating UK listing draft...', {
         id: 'create-draft',
       });
       const response = await listingAgentService.createDraft(formData);
@@ -171,7 +171,7 @@ export default function NewListingDraftPage() {
         </Link>
         <span className="text-xs bg-accent/15 text-accent font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5">
           <Sparkles size={13} />
-          UK AI Listing Generator (Claude Sonnet)
+          UK AI Listing Generator (Gemini Flash)
         </span>
       </div>
 
@@ -183,7 +183,7 @@ export default function NewListingDraftPage() {
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Provide product photos and/or raw notes (in English, Urdu, or Roman Urdu).
-            Claude AI will generate a ready-to-publish British English listing with VAT-inclusive pricing in GBP (£).
+            Gemini AI will generate a ready-to-publish British English listing with VAT-inclusive pricing in GBP (£).
           </p>
         </div>
 
@@ -299,7 +299,7 @@ export default function NewListingDraftPage() {
               className="w-full rounded-2xl border border-input bg-background px-3.5 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-y leading-relaxed"
             />
             <p className="text-xs text-muted-foreground">
-              You can write details in English, Urdu, or Roman Urdu. Claude translates and structures all content into British English.
+              You can write details in English, Urdu, or Roman Urdu. Gemini translates and structures all content into British English.
             </p>
           </div>
 
