@@ -84,14 +84,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { isDark, toggleTheme } = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  const isAdmin = String(user?.role || '').toUpperCase() === 'ADMIN';
+
   // Client-side role guard (middleware handles the cookie check)
   useEffect(() => {
-    if (!isLoading && (!user || user.role !== 'ADMIN')) {
+    if (!isLoading && (!user || !isAdmin)) {
       router.replace('/auth/login');
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, isAdmin, router]);
 
-  if (isLoading || !user || user.role !== 'ADMIN') {
+  if (isLoading || !user || !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />

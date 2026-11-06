@@ -5,13 +5,17 @@ import axios, {
 import Cookies from 'js-cookie';
 
 function normalizeApiUrl(raw?: string): string {
-  if (!raw) return 'http://localhost:3000/api';
+  if (!raw) {
+    return process.env.NODE_ENV === 'development'
+      ? 'http://localhost:3000/api'
+      : 'https://plum-gerbil-231797.hostingersite.com/api';
+  }
   const trimmed = raw.replace(/\/+$/, '');
   return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
 }
 
 export const API_URL = normalizeApiUrl(
-  process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL,
+  process.env.NEXT_PUBLIC_API_URL || process.env.BACKEND_URL,
 );
 
 export const ACCESS_TOKEN_KEY = 'furninest_access_token';
@@ -159,7 +163,8 @@ api.interceptors.response.use(
     const isAuthRoute =
       originalRequest?.url?.includes('/auth/login') ||
       originalRequest?.url?.includes('/auth/signup') ||
-      originalRequest?.url?.includes('/auth/refresh');
+      originalRequest?.url?.includes('/auth/refresh') ||
+      originalRequest?.url?.includes('/auth/logout');
 
     if (
       error.response?.status !== 401 ||

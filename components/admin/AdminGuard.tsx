@@ -8,6 +8,8 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading, isAuthenticated } = useAuth();
   const router = useRouter();
 
+  const isAdmin = String(user?.role || '').toUpperCase() === 'ADMIN';
+
   useEffect(() => {
     if (isLoading) return; 
 
@@ -16,12 +18,12 @@ export function AdminGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (user?.role !== 'ADMIN') {
+    if (!isAdmin) {
       router.replace('/'); 
     }
-  }, [isLoading, isAuthenticated, user, router]);
+  }, [isLoading, isAuthenticated, isAdmin, router]);
 
-  if (isLoading || !isAuthenticated || user?.role !== 'ADMIN') {
+  if (isLoading || !isAuthenticated || !isAdmin) {
     return (
       <div className="h-screen flex items-center justify-center bg-[#FBF7F2]">
         <p className="text-[#8B7B6F] text-sm">Checking access…</p>
