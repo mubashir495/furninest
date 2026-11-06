@@ -14,6 +14,7 @@ import {
   clearSession,
   getStoredUser,
   getAccessToken,
+  getRefreshToken,
 } from '@/lib/axios';
 import { authService } from '@/services/authService';
 import { useCartStore } from '@/store/cartStore';
@@ -61,17 +62,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             fetchCart();
             fetchWishlist();
           }
-        } catch {
-          // Token is invalid/expired and refresh failed
-          if (isMounted) {
-            clearSession();
-            setUser(null);
-            resetCart();
-            resetWishlist();
+        } catch (err: any) {
+          // Only clear session if backend explicitly rejected the session (401/403)
+          // On network errors or server cold start, keep the stored user logged in!
+          const status = err?.response?.status;
+          if (status === 401 || status === 403) {
+            if (isMounted) {
+              clearSession();
+              setUser(null);
+              resetCart();
+              resetWishlist();
+            }
           }
         }
       } else {
-        if (isMounted) {
+        // If no access token, check if refresh token exists before wiping session
+        const refreshToken = getRefreshToken();
+        if (!refreshToken && isMounted) {
           clearSession();
           setUser(null);
         }

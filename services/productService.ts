@@ -188,9 +188,7 @@ export const productService = {
 
   async addVariant(productId: string, data: FormData): Promise<unknown> {
     try {
-      const { data: res } = await api.post(`/products/${productId}/variants`, data, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const { data: res } = await api.post(`/products/${productId}/variants`, data);
       return res;
     } catch (error) {
       throw new Error(getApiErrorMessage(error, 'Could not add variant.'));
@@ -231,9 +229,7 @@ export const productService = {
     try {
       const form = new FormData();
       images.forEach((f) => form.append('images', f));
-      const { data: res } = await api.post(`/products/${productId}/variants/${variantId}/images`, form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const { data: res } = await api.post(`/products/${productId}/variants/${variantId}/images`, form);
       return res;
     } catch (error) {
       throw new Error(getApiErrorMessage(error, 'Could not upload variant images.'));

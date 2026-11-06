@@ -78,6 +78,7 @@ export function proxy(request: NextRequest) {
   }
 
   const { isAuthenticated, role } = getSessionStatus(request);
+  const normalizedRole = role ? role.toUpperCase() : undefined;
 
   const isAdminRoute = pathname.startsWith('/admin') || pathname.startsWith('/dashboard');
   const isAccountRoute = pathname.startsWith('/account');
@@ -92,7 +93,7 @@ export function proxy(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    if (role !== 'ADMIN') {
+    if (normalizedRole !== 'ADMIN') {
       const homeUrl = request.nextUrl.clone();
       homeUrl.pathname = '/';
       return NextResponse.redirect(homeUrl);
@@ -116,7 +117,7 @@ export function proxy(request: NextRequest) {
   // 3. Guest Auth Routes (/auth/login, /auth/signup)
   if (isAuthRoute && isAuthenticated) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = role === 'ADMIN' ? '/dashboard' : '/';
+    redirectUrl.pathname = normalizedRole === 'ADMIN' ? '/dashboard' : '/';
     return NextResponse.redirect(redirectUrl);
   }
 

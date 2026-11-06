@@ -93,6 +93,7 @@ function emitSessionExpired() {
 
 const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
 });
 
 // ---------------- Request ----------------
@@ -102,14 +103,22 @@ api.interceptors.request.use(
     const token = getAccessToken();
 
     if (token) {
+      // Set standard Bearer header
       config.headers.Authorization = `Bearer ${token}`;
+      // Set custom header as fallback (Hostinger/Apache proxies never strip x-access-token)
+      (config.headers as any)['x-access-token'] = token;
     }
 
-    // IMPORTANT
-    // Let browser automatically set multipart/form-data boundary
+    // IMPORTANT:
+    // When sending FormData, let the browser/Axios compute the boundary automatically
     if (config.data instanceof FormData) {
-      delete config.headers['Content-Type'];
-    } else {
+      if (typeof config.headers.delete === 'function') {
+        config.headers.delete('Content-Type');
+        config.headers.delete('content-type');
+      }
+      delete (config.headers as any)['Content-Type'];
+      delete (config.headers as any)['content-type'];
+    } else if (!config.headers['Content-Type'] && !config.headers['content-type']) {
       config.headers['Content-Type'] = 'application/json';
     }
 
@@ -179,6 +188,7 @@ api.interceptors.response.use(
         pendingQueue.push({
           resolve: (token) => {
             originalRequest.headers.Authorization = `Bearer ${token}`;
+            (originalRequest.headers as any)['x-access-token'] = token;
             resolve(api(originalRequest));
           },
           reject,
@@ -195,6 +205,9 @@ api.interceptors.response.use(
         {
           refreshToken,
         },
+        {
+          withCredentials: true,
+        },
       );
 
       saveSession(data.accessToken, data.refreshToken);
@@ -202,13 +215,18 @@ api.interceptors.response.use(
       processQueue(null, data.accessToken);
 
       originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+      (originalRequest.headers as any)['x-access-token'] = data.accessToken;
 
       return api(originalRequest);
-    } catch (err) {
+    } catch (err: any) {
       processQueue(err, null);
 
-      clearSession();
-      emitSessionExpired();
+      // Only wipe session if the refresh endpoint explicitly says the refresh token is invalid/expired
+      const refreshStatus = err?.response?.status;
+      if (refreshStatus === 401 || refreshStatus === 403) {
+        clearSession();
+        emitSessionExpired();
+      }
 
       return Promise.reject(err);
     } finally {
