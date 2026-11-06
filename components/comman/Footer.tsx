@@ -9,7 +9,7 @@ import { BsInstagram, BsTwitter } from 'react-icons/bs';
 import { FaFacebook } from 'react-icons/fa';
 import { useTheme } from '@/context/ThemeContext';
 import { ThemeMode } from '@/Type/theme';
-
+ 
 export function Footer() {
   const { mode, setMode, customTheme, setCustomTheme, mounted } = useTheme();
 
@@ -26,7 +26,7 @@ export function Footer() {
         {/* Top Section */}
         <div className="flex flex-col lg:flex-row items-center justify-between mb-16 gap-8 bg-gray-100 dark:bg-gray-800/50 rounded-3xl p-8 lg:p-12 border border-gray-200 dark:border-gray-700 transition-colors">
           <div className="text-center lg:text-left max-w-lg">
-            <p className="font-serif text-3xl font-bold tracking-widest uppercase mb-4 text-primary">LUXA FURNITURE</p>
+            <h3 className="font-serif text-3xl font-bold tracking-widest uppercase mb-4 text-primary">LUXA FURNITURE</h3>
             <p className="text-muted-foreground text-sm leading-relaxed">
               Curated luxury furniture for the design-conscious home. Heirloom-quality pieces crafted to last a lifetime.
             </p>
@@ -36,13 +36,11 @@ export function Footer() {
               <Input
                 type="email"
                 placeholder="Your email address"
-                aria-label="Email address for newsletter"
                 className="bg-white/50 dark:bg-gray-700/50 border-gray-300 dark:border-gray-600 text-foreground rounded-2xl placeholder:text-muted-foreground h-12"
                 required
               />
               <Button
                 type="submit"
-                aria-label="Subscribe to newsletter"
                 className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl h-12 px-6 font-medium"
               >
                 Subscribe
@@ -53,10 +51,8 @@ export function Footer() {
               {themeOptions.map((opt) => (
                 <button
                   key={opt.value}
-                  type="button"
-                  aria-label={`Switch to ${opt.label} theme`}
                   onClick={() => setMode(opt.value)}
-                  className={`p-2 rounded-full transition-colors ${
+                  className={`p-2 rounded-full transition-all ${
                     mounted && mode === opt.value
                       ? 'bg-primary text-primary-foreground shadow-md'
                       : 'hover:bg-gray-200 dark:hover:bg-gray-700 text-muted-foreground'
@@ -74,7 +70,6 @@ export function Footer() {
                     onChange={(e) =>
                       setCustomTheme({ ...customTheme, primary: e.target.value })
                     }
-                    aria-label="Custom color picker"
                     className="w-8 h-8 p-0 border-0 rounded-full cursor-pointer"
                     title="Custom Color"
                   />
@@ -87,7 +82,7 @@ export function Footer() {
         {/* 4 Columns */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           <div>
-            <h3 className="font-serif text-xl mb-6 text-primary font-medium">About LUXA FURNITURE</h3>
+            <h4 className="font-serif text-xl mb-6 text-primary font-medium">About LUXA</h4>
             <ul className="space-y-4 text-sm text-muted-foreground">
               <li><Link href="/about" className="hover:text-primary transition-colors">Our Story</Link></li>
               <li><Link href="/about" className="hover:text-primary transition-colors">Craftsmanship</Link></li>
@@ -97,7 +92,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h3 className="font-serif text-xl mb-6 text-primary font-medium">Shop</h3>
+            <h4 className="font-serif text-xl mb-6 text-primary font-medium">Shop</h4>
             <ul className="space-y-4 text-sm text-muted-foreground">
               <li><Link href="/shop" className="hover:text-primary transition-colors">All Products</Link></li>
               <li><Link href="/categories" className="hover:text-primary transition-colors">Living Room</Link></li>
@@ -107,7 +102,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h3 className="font-serif text-xl mb-6 text-primary font-medium">Customer Service</h3>
+            <h4 className="font-serif text-xl mb-6 text-primary font-medium">Customer Service</h4>
             <ul className="space-y-4 text-sm text-muted-foreground">
               <li><Link href="/faq" className="hover:text-primary transition-colors">FAQ</Link></li>
               <li><Link href="/terms" className="hover:text-primary transition-colors">Delivery & Returns</Link></li>
@@ -117,7 +112,7 @@ export function Footer() {
           </div>
 
           <div>
-            <h3 className="font-serif text-xl mb-6 text-primary font-medium">Contact</h3>
+            <h4 className="font-serif text-xl mb-6 text-primary font-medium">Contact</h4>
             <ul className="space-y-4 text-sm text-muted-foreground">
               <li className="flex items-start gap-3">
                 <MapPin size={18} className="text-primary shrink-0 mt-0.5" />
@@ -133,9 +128,9 @@ export function Footer() {
               </li>
             </ul>
             <div className="flex gap-4 mt-8">
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Luxa Furniture on Instagram" className="text-muted-foreground hover:text-primary transition-colors"><BsInstagram size={20} /></a>
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Luxa Furniture on Facebook" className="text-muted-foreground hover:text-primary transition-colors"><FaFacebook size={20} /></a>
-              <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" aria-label="Luxa Furniture on Twitter" className="text-muted-foreground hover:text-primary transition-colors"><BsTwitter size={20} /></a>
+              <a href="#" className="text-muted-foreground hover:text-primary transition-colors"><BsInstagram size={20} /></a>
+              <a href="#" className="text-muted-foreground hover:text-primary transition-colors"><FaFacebook size={20} /></a>
+              <a href="#" className="text-muted-foreground hover:text-primary transition-colors"><BsTwitter size={20} /></a>
             </div>
           </div>
         </div>
@@ -143,7 +138,7 @@ export function Footer() {
         {/* Bottom */}
         <div className="pt-8 border-t border-gray-200 dark:border-gray-800 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
           <p>&copy; {new Date().getFullYear()} LUXA FURNITURE Ltd. All rights reserved.</p>
-          <div className="flex items-center gap-4 text-muted-foreground">
+          <div className="flex items-center gap-4 text-muted-foreground/60">
             <span>Visa</span>
             <span>Mastercard</span>
             <span>American Express</span>
