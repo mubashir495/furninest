@@ -86,6 +86,49 @@ export const metadata: Metadata = {
   },
 };
 
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${siteUrl}/#organization`,
+      name: "Luxa Furniture",
+      url: siteUrl,
+      logo: `${siteUrl}/logo.png`,
+      contactPoint: [
+        {
+          "@type": "ContactPoint",
+          telephone: "+447398178902",
+          contactType: "customer service",
+          areaServed: ["GB", "PK"],
+          availableLanguage: "en",
+        },
+      ],
+      address: {
+        "@type": "PostalAddress",
+        streetAddress: "85 Great Portland Street",
+        addressLocality: "London",
+        postalCode: "W1W 7LT",
+        addressCountry: "GB",
+      },
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${siteUrl}/#website`,
+      url: siteUrl,
+      name: "Luxa Furniture",
+      publisher: {
+        "@id": `${siteUrl}/#organization`,
+      },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: `${siteUrl}/shop?q={search_term_string}`,
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -97,6 +140,12 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${playfair.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
+      </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ThemeProvider>
           <AuthProvider>
